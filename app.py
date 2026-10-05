@@ -25,7 +25,7 @@ def materialize(root:Path):
 
 root=Path(__file__).resolve().parent/'data'
 data=materialize(root)
-MODEL_VERSION='nih-u38-u49-2026-10-05-v2'
+MODEL_VERSION='nih-restored-v0.2.8-2026-10-05'
 @st.cache_resource(show_spinner='Reading NIH U38–U49 schedules…')
 def load_model(path,version):return build_model(Path(path))
 try:model=load_model(str(data),MODEL_VERSION)
