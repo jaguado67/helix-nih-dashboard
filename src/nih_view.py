@@ -145,9 +145,13 @@ def render_dashboard(m):
             cohort=set.intersection(*(set(m.raw_schedules[k]["task_code"].astype(str)) for k in ["U38"]+selected)) & set(m.native_scopes["U38"]["task_code"].astype(str))
             st.caption(f"Strict common cohort: {len(cohort):,} Activity IDs shared by U38 and all selected updates.")
         hist_fig=go.Figure()
-        baseline=m.native_scopes["U38"]
+        baseline=m.schedules["U38"].copy()  # HELIX-only via verified current HELIX code set
         if cohort is not None:
             baseline=baseline[baseline["task_code"].astype(str).isin(cohort)]
+        current_helix_count=len(m.current)
+        if len(baseline)>current_helix_count+100:
+            st.error(f"Baseline scope invalid: {len(baseline):,} vs {current_helix_count:,} current HELIX activities.")
+            st.stop()
         dates=pd.to_datetime(baseline["target_end_date"],errors="coerce").fillna(pd.to_datetime(baseline["early_end_date"],errors="coerce"))
         months=pd.date_range("2023-03-01","2027-05-01",freq="MS")
         base=pd.DataFrame({"Date":months,"Baseline":[int(dates.le(month+pd.offsets.MonthEnd(0)).sum()) for month in months]})
