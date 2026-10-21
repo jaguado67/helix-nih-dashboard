@@ -23,24 +23,28 @@ def render_dashboard(m):
     </style>
     """,unsafe_allow_html=True)
 
-    cur=m.status_counts("U49"); pct=m.status_percentages("U49")
-    st.markdown(f'''<div class="hdr"><div><div class="brand">HELIX Project &amp; Portfolio Control Center</div><div class="sub">NIH Schedule Performance Dashboard</div></div><div class="badges"><span class="badge">BASELINE · U38</span><span class="badge">PREVIOUS · U39–U48</span><span class="badge">CURRENT · U49</span></div><div class="right"><b>Latest Data Date</b> {fmt_date(m.data_date)}<br><b>Current Update</b> U49<br><b>Scope</b> HELIX Electrical + Fire Alarm</div></div>''',unsafe_allow_html=True)
-    st.markdown('<div class="view"><span>NIH VIEW · v0.2.8</span><span>U38 Baseline · U39–U48 Previous History · U49 Current</span></div>',unsafe_allow_html=True)
+    current=m.current_key; previous=m.previous_key
+    cur=m.status_counts(); pct=m.status_percentages()
+    previous_finish = m.milestone_previous() if hasattr(m, "milestone_previous") else None
+    previous_shift = (m.current_finish.normalize()-previous_finish.normalize()).days if previous_finish is not None and pd.notna(previous_finish) and pd.notna(m.current_finish) else None
+    previous_label = f"{previous_shift:+d} calendar days vs {previous}" if previous_shift is not None else f"vs {previous}"
+    st.markdown(f'''<div class="hdr"><div><div class="brand">HELIX Project &amp; Portfolio Control Center</div><div class="sub">NIH Schedule Performance Dashboard</div></div><div class="badges"><span class="badge">BASELINE · U38</span><span class="badge">PREVIOUS · {previous}</span><span class="badge">CURRENT · {current}</span></div><div class="right"><b>Latest Data Date</b> {fmt_date(m.data_date)}<br><b>Current Update</b> {current}<br><b>Scope</b> HELIX Electrical + Fire Alarm</div></div>''',unsafe_allow_html=True)
+    st.markdown(f'<div class="view"><span>NIH VIEW · v0.3.0</span><span>U38 Baseline · {previous} Previous · {current} Current</span></div>',unsafe_allow_html=True)
 
     st.markdown('<div class="section">PROJECT STATUS SUMMARY</div>',unsafe_allow_html=True)
     st.markdown('<div class="band"><div class="bandtitle"><span class="pill">TIME</span>SCHEDULE PERFORMANCE <span class="hint">Project completion milestone: EXS.130 · Date Shift convention = Baseline − Current</span></div>',unsafe_allow_html=True)
     st.markdown('<div class="kgrid">'+''.join([
         _kpi("Baseline Completion",fmt_date(m.baseline_finish),"U38 · Substantial Completion"),
-        _kpi("Current Forecast Finish",fmt_date(m.current_finish),"0 d vs U48","blue"),
-        _kpi("Finish Date Shift",fmt_days(m.finish_shift),"U38 − U49","bad" if (m.finish_shift or 0)<0 else "good"),
-        _kpi("Current Data Date",fmt_date(m.data_date),"U49 P6 Data Date"),
+        _kpi("Current Forecast Finish",fmt_date(m.current_finish),previous_label,"blue"),
+        _kpi("Finish Date Shift",fmt_days(m.finish_shift),f"U38 − {current}","bad" if (m.finish_shift or 0)<0 else "good"),
+        _kpi("Current Data Date",fmt_date(m.data_date),f"{current} P6 Data Date"),
     ])+'</div></div>',unsafe_allow_html=True)
 
     st.markdown('<div class="section">ACTIVITY PERFORMANCE</div>',unsafe_allow_html=True)
-    st.markdown('<div class="band"><div class="bandtitle">OVERALL ACTIVITY STATUS <span class="hint">HELIX scope · U49 · activity-count metrics only</span></div>',unsafe_allow_html=True)
+    st.markdown(f'<div class="band"><div class="bandtitle">OVERALL ACTIVITY STATUS <span class="hint">HELIX scope · {current} · activity-count metrics only</span></div>',unsafe_allow_html=True)
     open_acts=cur["In Progress"]+cur["Not Started"]
     st.markdown('<div class="kgrid8">'+''.join([
-        _kpi("Total HELIX Activities",f"{cur['Total']:,}","U49 activity-count scope"),
+        _kpi("Total HELIX Activities",f"{cur['Total']:,}",f"{current} activity-count scope"),
         _kpi("Completed",f"{cur['Completed']:,}","Completed activities"),
         _kpi("In Progress",f"{cur['In Progress']:,}","Open / active activities"),
         _kpi("Not Started",f"{cur['Not Started']:,}","Open / not started"),
@@ -56,7 +60,7 @@ def render_dashboard(m):
     if not s.empty:
         fig=go.Figure()
         fig.add_trace(go.Scatter(x=s["Date"],y=s["Baseline (U38)"],name="Baseline (U38)",mode="lines",line=dict(width=3,color=BLUE)))
-        fig.add_trace(go.Scatter(x=s["Date"],y=s["Planned / Forecast (U49)"],name="Planned / Forecast (U49)",mode="lines",line=dict(width=3,color=ORANGE)))
+        fig.add_trace(go.Scatter(x=s["Date"],y=s["Planned / Forecast"],name=f"Planned / Forecast ({current})",mode="lines",line=dict(width=3,color=ORANGE)))
         fig.add_trace(go.Scatter(x=s["Date"],y=s["Actual"],name="Actual",mode="lines+markers",line=dict(width=3,color=GREEN),marker=dict(size=5)))
         if pd.notna(m.data_date):
             ymax=max(s["Baseline (U38)"].max(),s["Planned / Forecast (U49)"].max())
@@ -67,15 +71,16 @@ def render_dashboard(m):
         fig.update_yaxes(gridcolor=GRID); fig.update_xaxes(showgrid=False)
         st.plotly_chart(fig,use_container_width=True,config={"displayModeBar":False})
 
-    prev=m.status_counts("U48")
-    st.markdown('<div class="section">ACTIVITY PLAN VS ACTUAL · U48 VS U49</div>',unsafe_allow_html=True)
-    d=pd.DataFrame({"Status":["Completed","In Progress","Not Started"],"Previous U48":[prev["Completed"],prev["In Progress"],prev["Not Started"]],"Current U49":[cur["Completed"],cur["In Progress"],cur["Not Started"]]})
+    prev=m.status_counts(previous)
+    st.markdown(f'<div class="section">ACTIVITY STATUS COMPARISON · {previous} VS {current}</div>',unsafe_allow_html=True)
+    d=pd.DataFrame({"Status":["Completed","In Progress","Not Started"],f"Previous {previous}":[prev["Completed"],prev["In Progress"],prev["Not Started"]],f"Current {current}":[cur["Completed"],cur["In Progress"],cur["Not Started"]]})
     fig2=go.Figure()
-    fig2.add_trace(go.Bar(y=d["Status"],x=d["Previous U48"],name="Previous U48",orientation="h"))
-    fig2.add_trace(go.Bar(y=d["Status"],x=d["Current U49"],name="Current U49",orientation="h"))
+    fig2.add_trace(go.Bar(y=d["Status"],x=d[f"Previous {previous}"],name=f"Previous {previous}",orientation="h"))
+    fig2.add_trace(go.Bar(y=d["Status"],x=d[f"Current {current}"],name=f"Current {current}",orientation="h"))
     fig2.update_layout(barmode="group",height=330,margin=dict(l=20,r=20,t=20,b=20),legend=dict(orientation="h"),plot_bgcolor="white")
     fig2.update_xaxes(gridcolor=GRID)
     st.plotly_chart(fig2,use_container_width=True,config={"displayModeBar":False})
 
     with st.expander("Diagnostics · NIH HELIX Scope Audit",expanded=False):
         st.dataframe(pd.DataFrame([m.scope_diagnostics()]),use_container_width=True,hide_index=True)
+
