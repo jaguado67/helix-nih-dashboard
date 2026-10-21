@@ -10,6 +10,14 @@ def fmt_days(x): return "—" if x is None else f"{x:+d} d"
 def _kpi(label,value,sub="",cls=""):
     return f'<div class="kpi {cls}"><div class="kl">{label}</div><div class="kv">{value}</div><div class="ks">{sub}</div></div>'
 
+def update_label(m,key):
+    project=m.projects[key]
+    for field in ("last_recalc_date","data_date","last_schedule_date"):
+        date=pd.to_datetime(project.get(field),errors="coerce")
+        if pd.notna(date):
+            return f"{date.strftime('%B %Y')} ({key})"
+    return key
+
 def render_dashboard(m):
     st.markdown("""
     <style>
@@ -112,6 +120,49 @@ def render_dashboard(m):
         st.caption(f"Planning_{current} is anchored to {actual:,} completed HELIX activities at the Data Date. "
                    "Actual progress stops at the Data Date; planned monthly bars count open activities by forecast month. "
                    "Activity-count metrics are not weighted by resources, costs or physical quantities.")
+
+    st.markdown('<div class="section">HISTORICAL SCHEDULE COMPARISON</div>',unsafe_allow_html=True)
+    available=[k for k in m.available_updates if k!="U38"]
+    default=[k for k in ("U40","U44","U49","U50") if k in available]
+    if not default:
+        default=available[-4:]
+    selected=st.multiselect("Compare updates against the fixed U38 baseline",available,
+                            default=default,format_func=lambda k: f"{update_label(m,k)}",
+                            key="nih_historical_selection")
+    scope_mode=st.radio("Comparison scope",["As-reported scope in each update","Common activity IDs from current update"],
+                        horizontal=True,key="nih_scope_mode")
+    common=scope_mode.startswith("Common")
+    if selected:
+        hist_fig=go.Figure()
+        base=m.scurve()
+        base=base[base["Date"]<=pd.Timestamp("2027-05-01")]
+        hist_fig.add_trace(go.Scatter(x=base["Date"],y=base["Baseline"],name="Baseline (U38)",
+                                      mode="lines",line=dict(color=BLUE,width=4)))
+        palette=["#E4572E","#7654A3","#159B77","#C08D23","#A83B69","#444F88","#008E9A"]
+        for i,key in enumerate(selected):
+            history,cutoff=m.historical_curve(key,common_scope=common)
+            if history.empty:
+                continue
+            forecast=history[["Date","Forecast"]].dropna()
+            if pd.notna(cutoff):
+                completed=int((m.schedules[key] if common else m.native_scopes[key])["Status"].eq("Completed").sum())
+                forecast=pd.concat([pd.DataFrame({"Date":[cutoff],"Forecast":[completed]}),forecast.loc[forecast["Date"]>cutoff]],ignore_index=True)
+            hist_fig.add_trace(go.Scatter(x=forecast["Date"],y=forecast["Forecast"],
+                                          name=update_label(m,key),mode="lines",
+                                          line=dict(width=2.5,color=palette[i%len(palette)])))
+        hist_fig.update_layout(height=430,plot_bgcolor="white",hovermode="x unified",
+                               margin=dict(l=15,r=15,t=40,b=15),yaxis_title="Cumulative Activities",
+                               legend=dict(orientation="h",y=1.16,x=0))
+        hist_fig.update_yaxes(gridcolor=GRID,rangemode="tozero")
+        hist_fig.update_xaxes(tickformat="%b-%y",dtick="M2",range=[base["Date"].min(),pd.Timestamp("2027-05-31")])
+        st.plotly_chart(hist_fig,use_container_width=True,config={"displayModeBar":False})
+        st.caption("Each colored curve retains that update's own forecast as of its Data Date. "
+                   "The U38 baseline is fixed. Historical forecasts are not a measure of actual progress.")
+        st.dataframe(m.historical_diagnostics(selected),use_container_width=True,hide_index=True)
+        st.caption("Activity totals may differ across updates because the scope changed. "
+                   "Use Common activity IDs for a more controlled date comparison.")
+    else:
+        st.info("Select one or more updates to view historical forecast curves.")
 
     prev=m.status_counts(previous)
     def update_month(key):
