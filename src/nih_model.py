@@ -173,9 +173,13 @@ class NIHModel:
                             "Monthly Actual":int(actual_dates.dt.to_period("M").eq(month.to_period("M")).sum())})
         return pd.DataFrame(records)
 
-    def historical_curve(self, key, common_scope=False):
+    def historical_curve(self, key, common_scope=False, activity_ids=None):
         """Per-update as-of forecast; preserves each update's original activity count."""
-        df=self.schedules[key] if common_scope else self.native_scopes[key]
+        df=self.native_scopes[key]
+        if activity_ids is not None:
+            df=df[df["task_code"].astype(str).isin(activity_ids)]
+        elif common_scope:
+            df=self.schedules[key]
         dd=pdate(self.projects[key],"last_recalc_date","data_date","last_schedule_date")
         finish=forecast_finish(df)
         done=df["Status"].eq("Completed")
@@ -197,18 +201,18 @@ class NIHModel:
             rows.append({"Date":date,"Forecast":forecast,"Actual":actual if pd.isna(dd) or end<=dd else float("nan")})
         return pd.DataFrame(rows),dd
 
-    def historical_diagnostics(self,keys):
+    def historical_diagnostics(self,keys,activity_ids=None):
         result=[]
         for key in keys:
             native=self.native_scopes[key]
-            shared=self.schedules[key]
+            shared=native[native["task_code"].astype(str).isin(activity_ids)] if activity_ids is not None else self.schedules[key]
             data_date=pdate(self.projects[key],"last_recalc_date","data_date","last_schedule_date")
             actual=int(native["Status"].eq("Completed").sum())
             result.append({"Update":key,"Data Date":data_date.date() if pd.notna(data_date) else None,
                            "Total Activities":len(native),"Completed":actual,
                            "Remaining":len(native)-actual,
                            "Current-scope Matches":len(shared),
-                           "Scope Difference vs Current":len(native)-len(shared)})
+                           "Activities Outside Common Cohort":len(native)-len(shared)})
         return pd.DataFrame(result)
 
     def scope_diagnostics(self):
