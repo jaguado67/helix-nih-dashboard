@@ -177,7 +177,7 @@ class NIHModel:
         """Per-update as-of forecast; preserves each update's original activity count."""
         df=self.native_scopes[key]
         if activity_ids is not None:
-            df=df[df["task_code"].astype(str).isin(activity_ids)]
+            df=self.raw_schedules[key][self.raw_schedules[key]["task_code"].astype(str).isin(activity_ids)]
         elif common_scope:
             df=self.schedules[key]
         dd=pdate(self.projects[key],"last_recalc_date","data_date","last_schedule_date")
@@ -204,15 +204,19 @@ class NIHModel:
     def historical_diagnostics(self,keys,activity_ids=None):
         result=[]
         for key in keys:
+            raw=self.raw_schedules[key]
             native=self.native_scopes[key]
-            shared=native[native["task_code"].astype(str).isin(activity_ids)] if activity_ids is not None else self.schedules[key]
-            data_date=pdate(self.projects[key],"last_recalc_date","data_date","last_schedule_date")
-            actual=int(native["Status"].eq("Completed").sum())
-            result.append({"Update":key,"Data Date":data_date.date() if pd.notna(data_date) else None,
-                           "Total Activities":len(native),"Completed":actual,
-                           "Remaining":len(native)-actual,
-                           "Current-scope Matches":len(shared),
-                           "Activities Outside Common Cohort":len(native)-len(shared)})
+            # Older XER versions may omit ACTVTYPE/ACTVCODE associations.
+            # When a strict cohort was explicitly selected, match directly to TASK codes,
+            # independently of the historical activity-code dictionary.
+            matched=raw[raw["task_code"].astype(str).isin(activity_ids)] if activity_ids is not None else native
+            date=pdate(self.projects[key],"last_recalc_date","data_date","last_schedule_date")
+            result.append({"Update":key,"Data Date":date.date() if pd.notna(date) else None,
+                "Native HELIX Activities":len(native),
+                "Selected Cohort Matches":len(matched),
+                "Completed (selected)":int(matched["Status"].eq("Completed").sum()),
+                "Remaining (selected)":int((~matched["Status"].eq("Completed")).sum()),
+                "Missing from selected cohort":len(activity_ids)-len(matched) if activity_ids is not None else 0})
         return pd.DataFrame(result)
 
     def scope_diagnostics(self):
