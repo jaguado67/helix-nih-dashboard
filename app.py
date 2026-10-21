@@ -8,7 +8,7 @@ st.set_page_config(page_title='HELIX · NIH Hospital Dashboard',page_icon='🏥'
 
 def materialize(root:Path):
     runtime=Path('/tmp/helix_nih_data'); runtime.mkdir(parents=True,exist_ok=True)
-    for n in range(38,50):
+    for n in range(38,51):
         raw=root/f'U{n}.xer'; gz=root/f'U{n}.xer.gz'; target=runtime/f'U{n}.xer'
         if target.exists(): continue
         if raw.exists():
@@ -25,8 +25,8 @@ def materialize(root:Path):
 
 root=Path(__file__).resolve().parent/'data'
 data=materialize(root)
-MODEL_VERSION='nih-restored-v0.2.8-2026-10-05'
-@st.cache_resource(show_spinner='Reading NIH U38–U49 schedules…')
+MODEL_VERSION='nih-helix-standard-v0.3.0-2026-10-21'
+@st.cache_resource(show_spinner='Reading NIH schedules…')
 def load_model(path,version):return build_model(Path(path))
 try:model=load_model(str(data),MODEL_VERSION)
 except Exception as exc:
