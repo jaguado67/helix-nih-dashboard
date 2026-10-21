@@ -185,8 +185,8 @@ def render_variance(model):
             fig.add_trace(go.Scatter(x=LEVELS,y=values,name=key,mode="lines+markers",
                 line=dict(width=2.5,color=COLORS[i%len(COLORS)])))
         fig.update_layout(title=f"{metric.upper()} VARIANCE BY LEVEL · U38 BASELINE",
-            height=360,plot_bgcolor="white",yaxis_title="Calendar Days · negative means later",
-            legend=dict(orientation="h",y=1.17),margin=dict(l=30,r=25,t=65,b=20))
+            height=420,plot_bgcolor="white",yaxis_title="Calendar Days · negative means later",
+            legend=dict(orientation="h",y=1.04,x=0,yanchor="bottom"),margin=dict(l=45,r=25,t=115,b=35))
         fig.update_yaxes(gridcolor="#DCE4EC",zeroline=True,zerolinecolor="#7C8797")
         st.plotly_chart(fig,use_container_width=True)
         st.dataframe(pd.DataFrame(summary),use_container_width=True,hide_index=True)
