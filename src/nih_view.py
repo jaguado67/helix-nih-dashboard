@@ -145,7 +145,7 @@ def render_dashboard(m):
             cohort=set.intersection(*(set(m.raw_schedules[k]["task_code"].astype(str)) for k in ["U38"]+selected)) & set(m.native_scopes["U38"]["task_code"].astype(str))
             st.caption(f"Strict common cohort: {len(cohort):,} Activity IDs shared by U38 and all selected updates.")
         hist_fig=go.Figure()
-        baseline=m.raw_schedules["U38"]
+        baseline=m.native_scopes["U38"]
         if cohort is not None:
             baseline=baseline[baseline["task_code"].astype(str).isin(cohort)]
         dates=pd.to_datetime(baseline["target_end_date"],errors="coerce").fillna(pd.to_datetime(baseline["early_end_date"],errors="coerce"))
