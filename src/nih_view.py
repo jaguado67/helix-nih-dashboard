@@ -36,9 +36,6 @@ def render_dashboard(m):
     previous_finish = m.milestone_previous() if hasattr(m, "milestone_previous") else None
     previous_shift = (m.current_finish.normalize()-previous_finish.normalize()).days if previous_finish is not None and pd.notna(previous_finish) and pd.notna(m.current_finish) else None
     previous_label = f"{previous_shift:+d} calendar days vs {previous}" if previous_shift is not None else f"vs {previous}"
-    st.markdown(f'''<div class="hdr"><div><div class="brand">HELIX Project &amp; Portfolio Control Center</div><div class="sub">NIH Schedule Performance Dashboard</div></div><div class="badges"><span class="badge">BASELINE · U38</span><span class="badge">PREVIOUS · {previous}</span><span class="badge">CURRENT · {current}</span></div><div class="right"><b>Latest Data Date</b> {fmt_date(m.data_date)}<br><b>Current Update</b> {current}<br><b>Scope</b> HELIX Electrical + Fire Alarm</div></div>''',unsafe_allow_html=True)
-    st.markdown(f'<div class="view"><span>NIH VIEW · v0.3.0</span><span>U38 Baseline · {previous} Previous · {current} Current</span></div>',unsafe_allow_html=True)
-
     st.markdown('<div class="section">PROJECT STATUS SUMMARY</div>',unsafe_allow_html=True)
     st.markdown('<div class="band"><div class="bandtitle"><span class="pill">TIME</span>SCHEDULE PERFORMANCE <span class="hint">Project completion milestone: EXS.130 · Date Shift convention = Baseline − Current</span></div>',unsafe_allow_html=True)
     st.markdown('<div class="kgrid">'+''.join([
