@@ -3,8 +3,9 @@ import gzip, shutil, base64
 import streamlit as st
 from src.nih_model import build_model
 from src.nih_view import render_dashboard
+from src.nih_detail_pages import render_milestones, render_variance
 
-st.set_page_config(page_title='HELIX · NIH Hospital Dashboard',page_icon='🏥',layout='wide',initial_sidebar_state='collapsed')
+st.set_page_config(page_title='HELIX · NIH Hospital Dashboard',page_icon='🏥',layout='wide',initial_sidebar_state='expanded')
 
 def materialize(root:Path):
     runtime=Path('/tmp/helix_nih_data'); runtime.mkdir(parents=True,exist_ok=True)
@@ -25,7 +26,7 @@ def materialize(root:Path):
 
 root=Path(__file__).resolve().parent/'data'
 data=materialize(root)
-MODEL_VERSION='nih-historical-v0.4.0-2026-10-21'
+MODEL_VERSION='nih-pages-v0.5.0-2026-10-21'
 @st.cache_resource(show_spinner='Reading NIH schedules…')
 def load_model(path,version):return build_model(Path(path))
 try:model=load_model(str(data),MODEL_VERSION)
@@ -33,4 +34,10 @@ except Exception as exc:
     st.error(f'NIH dashboard could not be built: {exc}'); st.stop()
 if model.current_key == "U49":
     st.info("U50 XER has not been loaded. Showing the latest available schedule: U49.")
-render_dashboard(model)
+page=st.sidebar.radio("NIH Dashboard",["Project Overview","Milestones & Energization","Schedule Variance Analysis"],key="nih_page")
+if page=="Project Overview":
+    render_dashboard(model)
+elif page=="Milestones & Energization":
+    render_milestones(model)
+else:
+    render_variance(model)
