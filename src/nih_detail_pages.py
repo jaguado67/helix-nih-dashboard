@@ -117,14 +117,17 @@ def level_of(name):
 
 def type_of(name):
     text=str(name).lower()
-    for label,words in [
-        ("Cans/Troughs/XFMRs",["transformer","xfmr","trough","can "]),
-        ("Conduits",["conduit"]),
-        ("Elev. Pri. Conduit",["elevator primary conduit"]),
-        ("Pull Wire",["pull wire","wire pulling","pull cable"]),
-        ("Risers + OH",["riser","overhead"])]:
-        if any(w in text for w in words):
-            return label
+    # Categories are mutually exclusive; prioritize recognizable disciplines.
+    if "fire alarm" in text or "fa device" in text:
+        return "Fire Alarm"
+    if "panel" in text or "switchboard" in text:
+        return "Panels"
+    if any(w in text for w in ("transformer","xfmr","trough","can ")):
+        return "Cans/Troughs/XFMRs"
+    if "conduit" in text:
+        return "Conduits"
+    if any(w in text for w in ("pull wire","wire pulling","pull cable")):
+        return "Pull Wire"
     return "Other"
 
 def variance_details(model,previous_key,current_key,field):
@@ -165,7 +168,7 @@ def render_variance(model):
     if int(previous[1:])>=int(current[1:]):
         st.warning("Select a Current Update later than the Previous Update.")
         return
-    categories=["Cans/Troughs/XFMRs","Conduits","Elev. Pri. Conduit","Other","Pull Wire","Risers + OH"]
+    categories=["Cans/Troughs/XFMRs","Conduits","Fire Alarm","Other","Pull Wire","Panels"]
     for metric in ("Start","Finish"):
         details=variance_details(model,previous,current,metric)
         if details.empty:
