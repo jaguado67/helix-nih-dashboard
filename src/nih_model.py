@@ -130,24 +130,47 @@ class NIHModel:
         return {k+" %":100*c[k]/n for k in ["Completed","In Progress","Not Started"]}
 
     def scurve(self):
-        b=self.baseline.copy(); c=self.current.copy(); dd=self.data_date
-        bfin=pd.to_datetime(b.get("target_end_date"),errors="coerce")
+        """Activity-count series: baseline and actual to data date, current plan from data date."""
+        b=self.baseline.copy()
+        c=self.current.copy()
+        dd=self.data_date
+        bfin=pd.to_datetime(b["target_end_date"],errors="coerce")
+        bfin=bfin.fillna(forecast_finish(b))
         cfin=forecast_finish(c)
-        afin=pd.to_datetime(c.get("act_end_date"),errors="coerce")
-        vals=pd.concat([bfin.dropna(),cfin.dropna()])
-        if vals.empty:return pd.DataFrame()
-        start=vals.min().to_period("M").to_timestamp(); end=vals.max().to_period("M").to_timestamp()
-        idx=pd.date_range(start,end,freq="MS")
-        rows=[]
-        for d in idx:
-            e=d+pd.offsets.MonthEnd(0)
-            rows.append({
-                "Date":d,
-                "Baseline (U38)":int((bfin<=e).sum()),
-                "Planned / Forecast":int((cfin<=e).sum()),
-                "Actual":int((afin<=min(e,dd)).sum()) if pd.notna(dd) else int((afin<=e).sum()),
-            })
-        return pd.DataFrame(rows)
+        afin=pd.to_datetime(c["act_end_date"],errors="coerce")
+        done=c["Status"].eq("Completed")
+        if pd.notna(dd):
+            actual_dates=afin.where(done & afin.le(dd))
+            outstanding=cfin.where(~done | afin.gt(dd) | afin.isna())
+        else:
+            actual_dates=afin.where(done)
+            outstanding=cfin.where(~done | afin.isna())
+        dates=pd.concat([bfin.dropna(),cfin.dropna(),actual_dates.dropna()])
+        if dates.empty:
+            return pd.DataFrame()
+        start=dates.min().to_period("M").to_timestamp()
+        end=dates.max().to_period("M").to_timestamp()
+        months=pd.date_range(start,end,freq="MS")
+        n_actual=int(actual_dates.notna().sum())
+        records=[]
+        for month in months:
+            month_end=month+pd.offsets.MonthEnd(0)
+            actual=int(actual_dates.le(month_end).sum())
+            if pd.notna(dd) and month_end > dd:
+                actual_value=float("nan")
+            else:
+                actual_value=actual
+            # A current forecast is anchored to actual progress at the Data Date.
+            if pd.notna(dd):
+                planned=n_actual+int(outstanding.le(max(month_end,dd)).sum()) if month_end>=dd.to_period("M").to_timestamp() else float("nan")
+            else:
+                planned=int(cfin.le(month_end).sum())
+            records.append({"Date":month,"Baseline":int(bfin.le(month_end).sum()),
+                            "Planned":planned,"Actual":actual_value,
+                            "Monthly Baseline":int(bfin.dt.to_period("M").eq(month.to_period("M")).sum()),
+                            "Monthly Planned":int(outstanding.dt.to_period("M").eq(month.to_period("M")).sum()) if pd.notna(dd) and month_end>dd else 0,
+                            "Monthly Actual":int(actual_dates.dt.to_period("M").eq(month.to_period("M")).sum())})
+        return pd.DataFrame(records)
 
     def scope_diagnostics(self):
         return {
