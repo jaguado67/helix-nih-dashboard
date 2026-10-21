@@ -136,7 +136,7 @@ def render_dashboard(m):
     selected=st.multiselect("Compare updates against the fixed U38 baseline",available,
                             default=default,format_func=lambda k: f"{update_label(m,k)}",
                             key="nih_historical_selection")
-    scope_mode=st.radio("Comparison scope",["As-reported scope in each update","Common activity IDs from current update"],
+    scope_mode=st.radio("Comparison scope",["As-reported scope in each update","Strict common Activity IDs across selected updates + U38"],
                         horizontal=True,key="nih_scope_mode")
     common=scope_mode.startswith("Common")
     if selected:
@@ -174,8 +174,9 @@ def render_dashboard(m):
         st.caption("Each colored curve retains that update's own forecast as of its Data Date. "
                    "The U38 baseline is fixed. Historical forecasts are not a measure of actual progress.")
         st.dataframe(m.historical_diagnostics(selected,activity_ids=cohort),use_container_width=True,hide_index=True)
-        st.caption("Activity totals may differ across updates because the scope changed. "
-                   "Use Common activity IDs for a more controlled date comparison.")
+        st.caption("As-reported uses each update's native HELIX scope. Strict common scope "
+                   "uses the exact same Activity IDs in U38 and every selected update; "
+                   "changing the selection may change the common cohort size.")
     else:
         st.info("Select one or more updates to view historical forecast curves.")
 
