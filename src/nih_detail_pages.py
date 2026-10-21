@@ -72,7 +72,7 @@ def render_milestones(model):
     title("HELIX PANEL ENERGIZATION DATES")
     current=scoped(model,model.current_key)
     names=current["task_name"].fillna("").astype(str)
-    panels=current[names.str.contains(r"panels? ready to energize|energiz(?:e|ation).*panel",case=False,regex=True)].copy()
+    panels=current[names.str.contains(r"panels?\s+ready\s+to\s+energize\s*-\s*lock\s+doors\s+and\s+limit\s+access",case=False,regex=True)].copy()
     if panels.empty:
         st.info("No panel energization activities matched the configured names.")
         return
