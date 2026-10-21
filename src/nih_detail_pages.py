@@ -171,6 +171,25 @@ def render_variance(model):
             xaxis_title="Activity Type",yaxis_title="Level",yaxis=dict(autorange="reversed"),
             plot_bgcolor="#D3D3D3")
         st.plotly_chart(heat,use_container_width=True)
+    title("HISTORICAL START & FINISH VARIANCE BY LEVEL · VS U38")
+    history=[k for k in ["U45","U46","U47","U48","U49","U50"] if k in available]
+    chosen_history=st.multiselect("Historical updates",available,default=history,key="nih_variance_history")
+    for metric in ("Start","Finish"):
+        fig=go.Figure()
+        summary={"Level":LEVELS}
+        for i,key in enumerate(chosen_history):
+            data=variance_details(model,"U38",key,metric)
+            means=data.groupby("Level")["Variance"].mean()
+            values=[round(float(means.get(level)),1) if pd.notna(means.get(level)) else None for level in LEVELS]
+            summary[key]=values
+            fig.add_trace(go.Scatter(x=LEVELS,y=values,name=key,mode="lines+markers",
+                line=dict(width=2.5,color=COLORS[i%len(COLORS)])))
+        fig.update_layout(title=f"{metric.upper()} VARIANCE BY LEVEL · U38 BASELINE",
+            height=360,plot_bgcolor="white",yaxis_title="Calendar Days · negative means later",
+            legend=dict(orientation="h",y=1.17),margin=dict(l=30,r=25,t=65,b=20))
+        fig.update_yaxes(gridcolor="#DCE4EC",zeroline=True,zerolinecolor="#7C8797")
+        st.plotly_chart(fig,use_container_width=True)
+        st.dataframe(pd.DataFrame(summary),use_container_width=True,hide_index=True)
     with st.expander("Activity Variance Details",expanded=False):
         detail=variance_details(model,previous,current,"Finish")
         st.dataframe(detail.sort_values("Variance"),use_container_width=True,hide_index=True)
