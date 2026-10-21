@@ -138,7 +138,7 @@ def render_dashboard(m):
                             key="nih_historical_selection")
     scope_mode=st.radio("Comparison scope",["As-reported scope in each update","Strict common Activity IDs across selected updates + U38"],
                         horizontal=True,key="nih_scope_mode")
-    common=scope_mode.startswith("Common")
+    common=scope_mode.startswith("Strict common")
     if selected:
         cohort=None
         if common:
