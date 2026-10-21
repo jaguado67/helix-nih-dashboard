@@ -31,4 +31,6 @@ def load_model(path,version):return build_model(Path(path))
 try:model=load_model(str(data),MODEL_VERSION)
 except Exception as exc:
     st.error(f'NIH dashboard could not be built: {exc}'); st.stop()
+if model.current_key != "U50":
+    st.info("U50 XER is not available in the deployed data. Showing the latest verified schedule: U49. Upload U50.xer to the data directory to activate the U49 vs U50 comparison.")
 render_dashboard(model)
