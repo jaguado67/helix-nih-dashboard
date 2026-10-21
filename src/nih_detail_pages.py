@@ -147,21 +147,21 @@ def render_variance(model):
         st.info("Select at least one update.")
         return
     chosen=st.selectbox("Heat map update",updates,index=len(updates)-1)
-    mode=st.radio("Variance date",["Start","Finish"],horizontal=True)
-    details=variance_details(model,chosen,mode)
-    if details.empty:
-        st.warning("No comparable dated activities.")
-        return
-    st.markdown(f"**{mode.upper()} VARIANCE HEAT MAP · {chosen} VS U38**")
-    matrix=details.pivot_table(index="Level",columns="Activity Type",values="Variance",aggfunc="mean")
-    order=[x for x in LEVELS+["Others"] if x in matrix.index]
-    matrix=matrix.reindex(order)
-    fig=go.Figure(go.Heatmap(z=matrix.to_numpy(),x=list(matrix.columns),y=list(matrix.index),
-        colorscale=[[0,"#BA1238"],[0.5,"#F6F2CD"],[1,"#12905C"]],zmid=0,
-        text=matrix.round(0).astype("Int64").astype(str).replace("<NA>",""),texttemplate="%{text}",
-        colorbar=dict(title="Days")))
-    fig.update_layout(height=530,margin=dict(l=20,r=30,t=25,b=90),xaxis_title="Activity Type",yaxis_title="Level")
-    st.plotly_chart(fig,use_container_width=True)
+    for mode in ("Start","Finish"):
+        details=variance_details(model,chosen,mode)
+        if details.empty:
+            st.warning(f"No comparable dated activities for {mode}.")
+            continue
+        st.markdown(f"**{mode.upper()} VARIANCE HEAT MAP · {chosen} VS U38**")
+        matrix=details.pivot_table(index="Level",columns="Activity Type",values="Variance",aggfunc="mean")
+        order=[x for x in LEVELS+["Others"] if x in matrix.index]
+        matrix=matrix.reindex(order)
+        fig=go.Figure(go.Heatmap(z=matrix.to_numpy(),x=list(matrix.columns),y=list(matrix.index),
+            colorscale=[[0,"#BA1238"],[0.5,"#F6F2CD"],[1,"#12905C"]],zmid=0,
+            text=matrix.round(0).astype("Int64").astype(str).replace("<NA>",""),texttemplate="%{text}",
+            colorbar=dict(title="Days")))
+        fig.update_layout(height=480,margin=dict(l=20,r=30,t=25,b=90),xaxis_title="Activity Type",yaxis_title="Level")
+        st.plotly_chart(fig,use_container_width=True)
     st.markdown("**START & FINISH VARIANCE BY LEVEL · HISTORICAL MOVEMENT**")
     for metric in ("Start","Finish"):
         plot=go.Figure()
@@ -175,4 +175,4 @@ def render_variance(model):
             margin=dict(l=25,r=20,t=65,b=20))
         plot.update_yaxes(gridcolor="#DCE4EC",zeroline=True,zerolinecolor="#999")
         st.plotly_chart(plot,use_container_width=True)
-    st.dataframe(details.sort_values("Variance"),use_container_width=True,hide_index=True)
+    st.dataframe(variance_details(model,chosen,"Finish").sort_values("Variance"),use_container_width=True,hide_index=True)
