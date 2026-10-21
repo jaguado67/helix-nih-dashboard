@@ -235,7 +235,7 @@ def build_building_heatmap(data, level_col="Level", type_col="Activity Type",
     layout = dict(
         title=dict(text=f"<b>{title}</b><br><span style='font-size:12px;color:{MUTED}'>"
                         f"Building section view · each floor = level, each bay = activity type · "
-                        f"negative = start slipped</span>", x=0.01, font=dict(size=18, color=INK)),
+                        f"negative = delayed · positive = earlier</span>", x=0.01, font=dict(size=18, color=INK)),
         height=height, margin=dict(l=20, r=20, t=80, b=20),
         plot_bgcolor=SKY, paper_bgcolor="white",
         xaxis=dict(visible=False, range=[-1.6, gauge_x0 + 1.9], fixedrange=False),
