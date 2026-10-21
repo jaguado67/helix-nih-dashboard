@@ -54,22 +54,56 @@ def render_dashboard(m):
         _kpi("Open HELIX Activities",f"{open_acts:,}","In Progress + Not Started"),
     ])+'</div></div>',unsafe_allow_html=True)
 
-    st.markdown('<div class="section">ACTIVITY S-CURVE · HELIX SCOPE</div>',unsafe_allow_html=True)
-    st.caption("Cumulative activity count above · monthly activity quantities below")
+    st.markdown(f'<div class="section">PROJECT PROGRESS S-CURVE · BASELINE VS PLANNING_{current} VS ACTUAL</div>',unsafe_allow_html=True)
     s=m.scurve()
     if not s.empty:
+        total=cur["Total"]
+        actual=cur["Completed"]
+        remaining=total-actual
+        st.markdown('<div class="kgrid">'+''.join([
+            _kpi(f"Total Plan · Planning_{current}",f"{total:,}","Current HELIX activity scope","blue"),
+            _kpi("Total Actual",f"{actual:,}","Completed HELIX activities","good"),
+            _kpi("Remaining",f"{remaining:,}","In Progress + Not Started","bad" if remaining else "good"),
+            _kpi("Data Date",fmt_date(m.data_date),f"{current} schedule cut-off")
+        ])+'</div>',unsafe_allow_html=True)
+        st.markdown('<div class="section">CUMULATIVE S-CURVE · BASELINE VS CURRENT PLAN VS ACTUAL</div>',unsafe_allow_html=True)
         fig=go.Figure()
-        fig.add_trace(go.Scatter(x=s["Date"],y=s["Baseline (U38)"],name="Baseline (U38)",mode="lines",line=dict(width=3,color=BLUE)))
-        fig.add_trace(go.Scatter(x=s["Date"],y=s["Planned / Forecast"],name=f"Planned / Forecast ({current})",mode="lines",line=dict(width=3,color=ORANGE)))
-        fig.add_trace(go.Scatter(x=s["Date"],y=s["Actual"],name="Actual",mode="lines+markers",line=dict(width=3,color=GREEN),marker=dict(size=5)))
+        for key,name,color,mode in [
+            ("Baseline","Baseline (U38)",BLUE,"lines"),
+            ("Planned",f"Planned / Forecast ({current})",ORANGE,"lines"),
+            ("Actual","Actual",GREEN,"lines+markers")]:
+            fig.add_trace(go.Scatter(x=s["Date"],y=s[key],name=name,mode=mode,
+                                     line=dict(width=3,color=color),marker=dict(size=5 if key=="Actual" else 0),
+                                     connectgaps=False))
         if pd.notna(m.data_date):
-            ymax=max(s["Baseline (U38)"].max(),s["Planned / Forecast"].max())
-            fig.add_vline(x=m.data_date,line_dash="dash",line_width=2,line_color="#607d9b")
-            fig.add_annotation(x=m.data_date,y=ymax,text=f"Data Date · {fmt_date(m.data_date)}",showarrow=False,xanchor="left",bgcolor="white")
-            fig.add_annotation(x=m.data_date,y=cur["Completed"],text=f'Actual at Data Date: {cur["Completed"]:,}',showarrow=False,xanchor="left",bgcolor="#eaf7f2",font=dict(color=GREEN))
-        fig.update_layout(height=450,margin=dict(l=15,r=15,t=30,b=20),yaxis_title="Cumulative Activities",legend=dict(orientation="h",y=1.08,x=.35),plot_bgcolor="white",hovermode="x unified")
-        fig.update_yaxes(gridcolor=GRID); fig.update_xaxes(showgrid=False)
+            fig.add_vline(x=m.data_date,line_dash="dash",line_width=2,line_color="#3678CB")
+            fig.add_annotation(x=m.data_date,y=1.08,yref="paper",text=f"Data Date · {fmt_date(m.data_date)}",
+                               showarrow=False,font=dict(color=BLUE,size=11),bgcolor="white")
+            fig.add_annotation(x=m.data_date,y=actual,text=f"Actual: {actual:,}",showarrow=True,ax=-35,ay=-30,
+                               bgcolor="white",font=dict(color=GREEN))
+        fig.update_layout(height=420,margin=dict(l=20,r=20,t=45,b=15),yaxis_title="Cumulative Activities",
+                          legend=dict(orientation="h",y=1.17,x=.28),plot_bgcolor="white",hovermode="x unified")
+        fig.update_yaxes(gridcolor=GRID,rangemode="tozero")
+        fig.update_xaxes(gridcolor="#EEF1F5",tickformat="%b-%y",dtick="M2",
+                         range=[s["Date"].min()-pd.Timedelta(days=15),s["Date"].max()+pd.Timedelta(days=20)])
         st.plotly_chart(fig,use_container_width=True,config={"displayModeBar":False})
+        st.markdown('<div class="section">MONTHLY BASELINE VS PLANNED VS ACTUAL</div>',unsafe_allow_html=True)
+        bars=go.Figure()
+        for key,name,color in [("Monthly Baseline","Baseline",BLUE),
+                               ("Monthly Planned","Planned",ORANGE),("Monthly Actual","Actual",GREEN)]:
+            bars.add_trace(go.Bar(x=s["Date"],y=s[key],name=name,marker_color=color,
+                                  text=s[key].where(s[key]>0),textposition="outside",textfont=dict(size=10)))
+        if pd.notna(m.data_date):
+            bars.add_vline(x=m.data_date,line_dash="dash",line_color="#3678CB")
+        bars.update_layout(barmode="group",height=350,margin=dict(l=20,r=20,t=35,b=20),
+                           yaxis_title="Monthly Activities",legend=dict(orientation="h",y=-.17,x=.32),
+                           plot_bgcolor="white")
+        bars.update_yaxes(gridcolor=GRID,rangemode="tozero")
+        bars.update_xaxes(tickformat="%b-%y",dtick="M2",range=[s["Date"].min()-pd.Timedelta(days=15),s["Date"].max()+pd.Timedelta(days=20)])
+        st.plotly_chart(bars,use_container_width=True,config={"displayModeBar":False})
+        st.caption(f"Planning_{current} is anchored to {actual:,} completed HELIX activities at the Data Date. "
+                   "Actual progress stops at the Data Date; planned monthly bars count open activities by forecast month. "
+                   "Activity-count metrics are not weighted by resources, costs or physical quantities.")
 
     prev=m.status_counts(previous)
     st.markdown(f'<div class="section">ACTIVITY STATUS COMPARISON · {previous} VS {current}</div>',unsafe_allow_html=True)
