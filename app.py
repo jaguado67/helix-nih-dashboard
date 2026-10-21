@@ -44,23 +44,26 @@ div[data-testid="stSegmentedControl"] button {font-weight:700}
 [data-testid="stMainBlockContainer"] {padding-top: 3.3rem !important;}
 </style>
 """,unsafe_allow_html=True)
-logo_candidates=[]
-for directory in ("LOGOS","logos","assets","images"):
-    folder=Path(__file__).resolve().parent/directory
-    if folder.is_dir():
-        logo_candidates += sorted([f for f in folder.iterdir() if f.suffix.lower() in (".png",".jpg",".jpeg",".webp")])
-left,center,right=st.columns([1,5,1],vertical_alignment="center")
+logo_dir=Path(__file__).resolve().parent/"LOGOS"
+def official_logo(filename):
+    encoded=logo_dir/(filename+".b64")
+    if encoded.exists():
+        return base64.b64decode(encoded.read_text(encoding="ascii"))
+    path=logo_dir/filename
+    return str(path) if path.exists() else None
+
+left,center,right=st.columns([1.15,5,1.15],vertical_alignment="center")
 with left:
-    if logo_candidates:
-        st.image(str(logo_candidates[0]),width=115)
+    logo=official_logo("Helix Electric Horizontral.jpg")
+    if logo: st.image(logo,use_container_width=True)
 with center:
     st.markdown("""<div style="background:#0B2E52;color:white;padding:27px 24px;min-height:115px;box-sizing:border-box;border-radius:5px">
        <div style="font-size:21px;line-height:1.4;font-weight:800">HELIX Project &amp; Portfolio Control Center</div>
        <div style="font-size:12px;margin-top:4px">NIH Schedule Performance Dashboard</div>
     </div>""",unsafe_allow_html=True)
 with right:
-    if len(logo_candidates)>1:
-        st.image(str(logo_candidates[1]),width=115)
+    logo=official_logo("TORO PMC LOGO 4.png")
+    if logo: st.image(logo,use_container_width=True)
 st.markdown(f"""<div style="background:#eef3f8;color:#163b60;padding:9px 14px;font-weight:700;font-size:12px">
 BASELINE · U38 &nbsp;&nbsp; | &nbsp;&nbsp; PREVIOUS · {model.previous_key}
 &nbsp;&nbsp; | &nbsp;&nbsp; CURRENT · {model.current_key}
