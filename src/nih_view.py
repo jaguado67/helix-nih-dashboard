@@ -179,7 +179,7 @@ def render_dashboard(m):
         st.plotly_chart(hist_fig,use_container_width=True,config={"displayModeBar":False})
         st.caption("Each colored curve retains that update's own forecast as of its Data Date. "
                    "The U38 baseline is fixed. Historical forecasts are not a measure of actual progress.")
-        st.dataframe(m.historical_diagnostics(selected,activity_ids=cohort),use_container_width=True,hide_index=True)
+        st.dataframe(m.historical_diagnostics(selected,activity_ids=cohort).sort_values("Data Date",ascending=False,kind="stable"),use_container_width=True,hide_index=True)
         st.caption("As-reported uses each update's native HELIX scope. Strict common scope "
                    "uses the exact same Activity IDs in U38 and every selected update; "
                    "changing the selection may change the common cohort size.")
