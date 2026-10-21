@@ -57,6 +57,7 @@ def render_dashboard(m):
     st.markdown(f'<div class="section">PROJECT PROGRESS S-CURVE · BASELINE VS PLANNING_{current} VS ACTUAL</div>',unsafe_allow_html=True)
     s=m.scurve()
     if not s.empty:
+        s=s.loc[s["Date"]<=pd.Timestamp("2027-05-01")].copy()
         total=cur["Total"]
         actual=cur["Completed"]
         remaining=total-actual
@@ -91,7 +92,7 @@ def render_dashboard(m):
                           legend=dict(orientation="h",y=1.17,x=.28),plot_bgcolor="white",hovermode="x unified")
         fig.update_yaxes(gridcolor=GRID,rangemode="tozero")
         fig.update_xaxes(gridcolor="#EEF1F5",tickformat="%b-%y",dtick="M2",
-                         range=[s["Date"].min()-pd.Timedelta(days=15),s["Date"].max()+pd.Timedelta(days=20)])
+                         range=[s["Date"].min()-pd.Timedelta(days=15),pd.Timestamp("2027-05-31")])
         st.plotly_chart(fig,use_container_width=True,config={"displayModeBar":False})
         st.markdown('<div class="section">MONTHLY BASELINE VS PLANNED VS ACTUAL</div>',unsafe_allow_html=True)
         bars=go.Figure()
@@ -105,8 +106,9 @@ def render_dashboard(m):
                            yaxis_title="Monthly Activities",legend=dict(orientation="h",y=-.17,x=.32),
                            plot_bgcolor="white")
         bars.update_yaxes(gridcolor=GRID,rangemode="tozero")
-        bars.update_xaxes(tickformat="%b-%y",dtick="M2",range=[s["Date"].min()-pd.Timedelta(days=15),s["Date"].max()+pd.Timedelta(days=20)])
+        bars.update_xaxes(tickformat="%b-%y",dtick="M2",range=[s["Date"].min()-pd.Timedelta(days=15),pd.Timestamp("2027-05-31")])
         st.plotly_chart(bars,use_container_width=True,config={"displayModeBar":False})
+        st.caption("Display horizon: Phase 2 through May 2027. Activities scheduled after this date remain in the source and overall scope totals but are excluded from the displayed monthly horizon.")
         st.caption(f"Planning_{current} is anchored to {actual:,} completed HELIX activities at the Data Date. "
                    "Actual progress stops at the Data Date; planned monthly bars count open activities by forecast month. "
                    "Activity-count metrics are not weighted by resources, costs or physical quantities.")
