@@ -123,6 +123,13 @@ def render_dashboard(m):
 
     st.markdown('<div class="section">HISTORICAL SCHEDULE COMPARISON</div>',unsafe_allow_html=True)
     available=[k for k in m.available_updates if k!="U38"]
+    expected=[f"U{i}" for i in range(39,int(m.current_key[1:])+1)]
+    missing=[key for key in expected if key not in available]
+    st.caption(f"Loaded: U38 baseline + {len(available)} update(s).")
+    if missing:
+        st.warning("Missing historical XER files in the deployed GitHub data folder: "
+                   + ", ".join(missing)
+                   + ". Upload each file as Uxx.xer or Uxx.xer.gz to enable selection.")
     default=[k for k in ("U40","U44","U49","U50") if k in available]
     if not default:
         default=available[-4:]
