@@ -3,6 +3,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 from src.nih_model import forecast_finish
+from src.building_heatmap import build_building_heatmap
 
 NAVY="#0B2E52"
 LEVELS=["B2","B1"]+[f"L{i}" for i in range(1,10)]
@@ -165,31 +166,17 @@ def render_variance(model):
         st.warning("Select a Current Update later than the Previous Update.")
         return
     categories=["Cans/Troughs/XFMRs","Conduits","Elev. Pri. Conduit","Other","Pull Wire","Risers + OH"]
-    levels=["L9","L8","L7","L6","L5","L4","L3","L2","L1","B1","B2","Others"]
     for metric in ("Start","Finish"):
         details=variance_details(model,previous,current,metric)
-        st.markdown(f"**{metric.upper()} VARIANCE HEAT MAP · {previous} → {current}**")
         if details.empty:
-            st.info("No comparable activities with valid dates.")
+            st.info(f"No comparable {metric.lower()} dates.")
             continue
-        matrix=details.pivot_table(index="Level",columns="Activity Type",values="Variance",aggfunc="mean")
-        matrix=matrix.reindex(index=levels,columns=categories)
-        z=matrix.to_numpy()
-        maxabs=max(1.0,float(abs(details["Variance"]).quantile(0.95)))
-        labels=matrix.apply(lambda column:column.map(lambda value: "" if pd.isna(value) else f"{value:+.0f}"))
-        heat=go.Figure(go.Heatmap(
-            x=categories,y=levels,z=z,
-            zmin=-maxabs,zmax=maxabs,zmid=0,
-            colorscale=[[0.0,"#B50932"],[0.25,"#F36A43"],[0.5,"#F7E9B0"],[0.75,"#BDE36F"],[1,"#147E47"]],
-            text=labels.to_numpy(),texttemplate="%{text}",
-            textfont=dict(size=12,color="#162333"),
-            xgap=2,ygap=2,
-            hovertemplate="Level: %{y}<br>Type: %{x}<br>Mean variance: %{z:.1f} calendar days<extra></extra>",
-            colorbar=dict(title="Calendar days")))
-        heat.update_layout(height=550,margin=dict(l=60,r=35,t=20,b=80),
-            xaxis_title="Activity Type",yaxis_title="Level",yaxis=dict(autorange="reversed"),
-            plot_bgcolor="#D3D3D3")
-        st.plotly_chart(heat,use_container_width=True)
+        figure=go.Figure(build_building_heatmap(
+            details,level_col="Level",type_col="Activity Type",
+            value_col="Variance",
+            title=f"{metric.upper()} VARIANCE · {previous} → {current}",
+            type_order=categories,unit="calendar days",height=880))
+        st.plotly_chart(figure,use_container_width=True,config={"displayModeBar":False})
     title("HISTORICAL START & FINISH VARIANCE BY LEVEL · VS U38")
     history=[k for k in ["U45","U46","U47","U48","U49","U50"] if k in available]
     chosen_history=st.multiselect("Historical updates",available,default=history,key="nih_variance_history")
