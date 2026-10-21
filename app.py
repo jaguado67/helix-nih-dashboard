@@ -26,7 +26,7 @@ def materialize(root:Path):
 
 root=Path(__file__).resolve().parent/'data'
 data=materialize(root)
-MODEL_VERSION='nih-pages-v0.6.1-2026-10-21'
+MODEL_VERSION='nih-pages-v0.6.2-2026-10-21'
 @st.cache_resource(show_spinner='Reading NIH schedules…')
 def load_model(path,version):return build_model(Path(path))
 try:model=load_model(str(data),MODEL_VERSION)
@@ -37,9 +37,11 @@ if model.current_key == "U49":
 st.markdown("""
 <style>
 [data-testid="stSidebar"] {display:none}
-.block-container {max-width:1550px;padding-top:0.65rem}
+.block-container {max-width:1550px;padding-top:3.3rem}
 div[data-testid="stSegmentedControl"] {background:#0B2E52;padding:8px;border-radius:0 0 6px 6px}
 div[data-testid="stSegmentedControl"] button {font-weight:700}
+[data-testid="stHeader"] {background: #ffffff;}
+[data-testid="stMainBlockContainer"] {padding-top: 3.3rem !important;}
 </style>
 """,unsafe_allow_html=True)
 logo_candidates=[]
@@ -52,7 +54,7 @@ with left:
     if logo_candidates:
         st.image(str(logo_candidates[0]),width=115)
 with center:
-    st.markdown("""<div style="background:#0B2E52;color:white;padding:19px 24px;min-height:92px;box-sizing:border-box;border-radius:5px">
+    st.markdown("""<div style="background:#0B2E52;color:white;padding:27px 24px;min-height:115px;box-sizing:border-box;border-radius:5px">
        <div style="font-size:21px;line-height:1.4;font-weight:800">HELIX Project &amp; Portfolio Control Center</div>
        <div style="font-size:12px;margin-top:4px">NIH Schedule Performance Dashboard</div>
     </div>""",unsafe_allow_html=True)
