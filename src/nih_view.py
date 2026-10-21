@@ -63,7 +63,7 @@ def render_dashboard(m):
         fig.add_trace(go.Scatter(x=s["Date"],y=s["Planned / Forecast"],name=f"Planned / Forecast ({current})",mode="lines",line=dict(width=3,color=ORANGE)))
         fig.add_trace(go.Scatter(x=s["Date"],y=s["Actual"],name="Actual",mode="lines+markers",line=dict(width=3,color=GREEN),marker=dict(size=5)))
         if pd.notna(m.data_date):
-            ymax=max(s["Baseline (U38)"].max(),s["Planned / Forecast (U49)"].max())
+            ymax=max(s["Baseline (U38)"].max(),s["Planned / Forecast"].max())
             fig.add_vline(x=m.data_date,line_dash="dash",line_width=2,line_color="#607d9b")
             fig.add_annotation(x=m.data_date,y=ymax,text=f"Data Date · {fmt_date(m.data_date)}",showarrow=False,xanchor="left",bgcolor="white")
             fig.add_annotation(x=m.data_date,y=cur["Completed"],text=f'Actual at Data Date: {cur["Completed"]:,}',showarrow=False,xanchor="left",bgcolor="#eaf7f2",font=dict(color=GREEN))
