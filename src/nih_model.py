@@ -111,6 +111,9 @@ class NIHModel:
     def baseline_finish(self): return milestone_date(self.raw_schedules["U38"],KEY_MILESTONE)
     @property
     def current_finish(self): return milestone_date(self.raw_schedules[self.current_key],KEY_MILESTONE)
+    def milestone_previous(self):
+        return milestone_date(self.raw_schedules[self.previous_key], KEY_MILESTONE)
+
     @property
     def finish_shift(self):
         if pd.notna(self.baseline_finish) and pd.notna(self.current_finish):
