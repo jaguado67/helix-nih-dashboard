@@ -117,10 +117,24 @@ def render_dashboard(m):
     st.markdown(f'<div class="section">ACTIVITY STATUS COMPARISON · {previous} VS {current}</div>',unsafe_allow_html=True)
     d=pd.DataFrame({"Status":["Completed","In Progress","Not Started"],f"Previous {previous}":[prev["Completed"],prev["In Progress"],prev["Not Started"]],f"Current {current}":[cur["Completed"],cur["In Progress"],cur["Not Started"]]})
     fig2=go.Figure()
-    fig2.add_trace(go.Bar(y=d["Status"],x=d[f"Previous {previous}"],name=f"Previous {previous}",orientation="h"))
-    fig2.add_trace(go.Bar(y=d["Status"],x=d[f"Current {current}"],name=f"Current {current}",orientation="h"))
-    fig2.update_layout(barmode="group",height=330,margin=dict(l=20,r=20,t=20,b=20),legend=dict(orientation="h"),plot_bgcolor="white")
-    fig2.update_xaxes(gridcolor=GRID)
+    fig2.add_trace(go.Bar(
+        x=d["Status"],y=d[f"Previous {previous}"],name=f"Previous {previous}",
+        marker_color=BLUE,text=d[f"Previous {previous}"],textposition="outside",
+        textfont=dict(size=12),cliponaxis=False))
+    fig2.add_trace(go.Bar(
+        x=d["Status"],y=d[f"Current {current}"],name=f"Current {current}",
+        marker_color=ORANGE,text=d[f"Current {current}"],textposition="outside",
+        textfont=dict(size=12),cliponaxis=False))
+    fig2.update_layout(
+        barmode="group",height=390,
+        margin=dict(l=30,r=30,t=35,b=40),plot_bgcolor="white",
+        legend=dict(orientation="h",y=-0.17,x=0.35),
+        yaxis_title="Number of HELIX Activities",
+        xaxis_title=None,bargap=0.38,bargroupgap=0.08,
+        font=dict(size=12,color=NAVY))
+    fig2.update_yaxes(gridcolor=GRID,rangemode="tozero")
+    fig2.update_xaxes(showgrid=False,categoryorder="array",
+                      categoryarray=["Completed","In Progress","Not Started"])
     st.plotly_chart(fig2,use_container_width=True,config={"displayModeBar":False})
 
     with st.expander("Diagnostics · NIH HELIX Scope Audit",expanded=False):
