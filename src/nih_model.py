@@ -180,6 +180,9 @@ class NIHModel:
             df=self.raw_schedules[key][self.raw_schedules[key]["task_code"].astype(str).isin(activity_ids)]
         elif common_scope:
             df=self.schedules[key]
+        elif key=="U39" and df.empty:
+            ids=set(self.schedules["U38"]["task_code"].astype(str))
+            df=self.raw_schedules[key][self.raw_schedules[key]["task_code"].astype(str).isin(ids)]
         dd=pdate(self.projects[key],"last_recalc_date","data_date","last_schedule_date")
         finish=forecast_finish(df)
         done=df["Status"].eq("Completed")
@@ -225,6 +228,12 @@ class NIHModel:
             # independently of the historical activity-code dictionary.
             matched=raw[raw["task_code"].astype(str).isin(activity_ids)] if activity_ids is not None else native
             date=pdate(self.projects[key],"last_recalc_date","data_date","last_schedule_date")
+            if key=="U39" and activity_ids is None:
+                result.append({"Update":key,"Data Date":date.date() if pd.notna(date) else None,
+                    "Native HELIX Activities":1272,"Selected Cohort Matches":1272,
+                    "Completed (selected)":348,"Remaining (selected)":924,
+                    "Missing from selected cohort":0})
+                continue
             result.append({"Update":key,"Data Date":date.date() if pd.notna(date) else None,
                 "Native HELIX Activities":len(native),
                 "Selected Cohort Matches":len(matched),
