@@ -136,14 +136,14 @@ def render_dashboard(m):
     selected=st.multiselect("Compare updates against the fixed U38 baseline",available,
                             default=default,format_func=lambda k: f"{update_label(m,k)}",
                             key="nih_historical_selection")
-    scope_mode=st.radio("Comparison scope",["As-reported scope in each update","Strict common Activity IDs across selected updates + U38"],
+    scope_mode=st.radio("Comparison Method",["Original Schedule","Same Activities Across Updates"],
                         horizontal=True,key="nih_scope_mode")
-    common=scope_mode.startswith("Strict common")
+    common=scope_mode=="Same Activities Across Updates"
     if selected:
         cohort=None
         if common:
             cohort=set.intersection(*(set(m.raw_schedules[k]["task_code"].astype(str)) for k in ["U38"]+selected)) & set(m.native_scopes["U38"]["task_code"].astype(str))
-            st.caption(f"Strict common cohort: {len(cohort):,} Activity IDs shared by U38 and all selected updates.")
+            st.caption(f"{len(cohort):,} Activities in Common")
         hist_fig=go.Figure()
         baseline=m.schedules["U38"].copy()  # HELIX-only via verified current HELIX code set
         if cohort is not None:
@@ -180,9 +180,7 @@ def render_dashboard(m):
         st.caption("Each colored curve retains that update's own forecast as of its Data Date. "
                    "The U38 baseline is fixed. Historical forecasts are not a measure of actual progress.")
         st.dataframe(m.historical_diagnostics(selected,activity_ids=cohort).sort_values("Data Date",ascending=False,kind="stable"),use_container_width=True,hide_index=True)
-        st.caption("As-reported uses each update's native HELIX scope. Strict common scope "
-                   "uses the exact same Activity IDs in U38 and every selected update; "
-                   "changing the selection may change the common cohort size.")
+
     else:
         st.info("Select one or more updates to view historical forecast curves.")
 
