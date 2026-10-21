@@ -114,15 +114,26 @@ def render_dashboard(m):
                    "Activity-count metrics are not weighted by resources, costs or physical quantities.")
 
     prev=m.status_counts(previous)
-    st.markdown(f'<div class="section">ACTIVITY STATUS COMPARISON · {previous} VS {current}</div>',unsafe_allow_html=True)
+    def update_month(key):
+        project=m.projects[key]
+        date=pd.NaT
+        for field in ("last_recalc_date","data_date","last_schedule_date"):
+            candidate=pd.to_datetime(project.get(field),errors="coerce")
+            if pd.notna(candidate):
+                date=candidate
+                break
+        return f"{date.strftime('%B %Y')} ({key})" if pd.notna(date) else key
+    previous_label=update_month(previous)
+    current_label=update_month(current)
+    st.markdown(f'<div class="section">ACTIVITY STATUS COMPARISON · {previous_label} VS {current_label}</div>',unsafe_allow_html=True)
     d=pd.DataFrame({"Status":["Completed","In Progress","Not Started"],f"Previous {previous}":[prev["Completed"],prev["In Progress"],prev["Not Started"]],f"Current {current}":[cur["Completed"],cur["In Progress"],cur["Not Started"]]})
     fig2=go.Figure()
     fig2.add_trace(go.Bar(
-        x=d["Status"],y=d[f"Previous {previous}"],name=f"Previous {previous}",
+        x=d["Status"],y=d[f"Previous {previous}"],name=previous_label,
         marker_color=BLUE,text=d[f"Previous {previous}"],textposition="outside",
         textfont=dict(size=12),cliponaxis=False))
     fig2.add_trace(go.Bar(
-        x=d["Status"],y=d[f"Current {current}"],name=f"Current {current}",
+        x=d["Status"],y=d[f"Current {current}"],name=current_label,
         marker_color=ORANGE,text=d[f"Current {current}"],textposition="outside",
         textfont=dict(size=12),cliponaxis=False))
     fig2.update_layout(
