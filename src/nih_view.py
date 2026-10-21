@@ -76,6 +76,12 @@ def render_dashboard(m):
                                      line=dict(width=3,color=color),marker=dict(size=5 if key=="Actual" else 0),
                                      connectgaps=False))
         if pd.notna(m.data_date):
+            observed=s.loc[s["Date"]<m.data_date,["Date","Actual"]].dropna()
+            fig.data[2].x=list(observed["Date"])+[m.data_date]
+            fig.data[2].y=list(observed["Actual"])+[actual]
+            forecast=s.loc[s["Date"]>m.data_date,["Date","Planned"]].dropna()
+            fig.data[1].x=[m.data_date]+list(forecast["Date"])
+            fig.data[1].y=[actual]+list(forecast["Planned"])
             fig.add_vline(x=m.data_date,line_dash="dash",line_width=2,line_color="#3678CB")
             fig.add_annotation(x=m.data_date,y=1.08,yref="paper",text=f"Data Date · {fmt_date(m.data_date)}",
                                showarrow=False,font=dict(color=BLUE,size=11),bgcolor="white")
