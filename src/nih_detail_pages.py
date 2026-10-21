@@ -88,7 +88,26 @@ def render_milestones(model):
         record["Variance (calendar days)"]=int((baseline.normalize()-current_date.normalize()).days) if pd.notna(baseline) and pd.notna(current_date) else None
         record["Status"]=activity.get("Status","")
         rows.append(record)
-    st.dataframe(pd.DataFrame(rows),use_container_width=True,hide_index=True,height=550)
+    energization=pd.DataFrame(rows)
+    latest_four=sorted([key for key in model.available_updates if key!="U38"],key=lambda x:int(x[1:]))[-4:]
+    display_columns=["Level","Activity ID","Activity Name","U38"]+latest_four+["Variance (calendar days)","Status"]
+    for col in display_columns:
+        if col not in energization:
+            energization[col]="—"
+    energization=energization[display_columns]
+    def status_color(value):
+        return {"Completed":"background-color:#DDF3E5;color:#126A38;font-weight:700",
+                "Not Started":"background-color:#FCE2E2;color:#AA2525;font-weight:700",
+                "In Progress":"background-color:#FFF0D4;color:#936000;font-weight:700"}.get(str(value),"")
+    def variance_color(value):
+        if pd.isna(value): return ""
+        return ("color:#BC2929;font-weight:700" if value<0 else
+                "color:#157E43;font-weight:700" if value>0 else "color:#64748B")
+    styled=(energization.style.map(status_color,subset=["Status"])
+            .map(variance_color,subset=["Variance (calendar days)"]))
+    st.dataframe(styled,use_container_width=True,hide_index=True,height=550,
+        column_config={"Activity Name":st.column_config.TextColumn(width="large"),
+                       "Activity ID":st.column_config.TextColumn(width="medium")})
 
 def level_of(name):
     text=str(name).upper()
