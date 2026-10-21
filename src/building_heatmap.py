@@ -182,7 +182,7 @@ def build_building_heatmap(data, level_col="Level", type_col="Activity Type",
         _, wi, wy = worst
         rect(wi - 0.47, wy - 0.43, wi + 0.47, wy + 0.43, "rgba(0,0,0,0)", line="#111", width=3, layer="above")
         annotations.append(dict(x=wi + 0.47, y=wy + 0.43, xanchor="right", yanchor="bottom",
-                                text="WORST BAY", showarrow=False,
+                                text="MAXIMUM DELAY", showarrow=False,
                                 font=dict(size=9, color="white"), bgcolor="#111", borderpad=2))
 
     # ------------------------------------------------ floor indicator (left)
