@@ -90,32 +90,39 @@ class NIHModel:
     scope_codes:set
 
     @property
+    def current_key(self): return "U50" if "U50" in self.schedules else "U49"
+    @property
+    def previous_key(self): return "U49" if self.current_key == "U50" else "U48"
+    @property
+    def available_updates(self): return sorted(self.schedules, key=lambda k:int(k[1:]))
+    @property
     def baseline(self): return self.schedules["U38"]
     @property
-    def previous(self): return self.schedules["U48"]
+    def previous(self): return self.schedules[self.previous_key]
     @property
-    def current(self): return self.schedules["U49"]
+    def current(self): return self.schedules[self.current_key]
     @property
     def baseline_project(self): return self.projects["U38"]
     @property
-    def current_project(self): return self.projects["U49"]
+    def current_project(self): return self.projects[self.current_key]
     @property
     def data_date(self): return pdate(self.current_project,"last_recalc_date","data_date","last_schedule_date")
     @property
     def baseline_finish(self): return milestone_date(self.raw_schedules["U38"],KEY_MILESTONE)
     @property
-    def current_finish(self): return milestone_date(self.raw_schedules["U49"],KEY_MILESTONE)
+    def current_finish(self): return milestone_date(self.raw_schedules[self.current_key],KEY_MILESTONE)
     @property
     def finish_shift(self):
         if pd.notna(self.baseline_finish) and pd.notna(self.current_finish):
             return int((self.baseline_finish.normalize()-self.current_finish.normalize()).days)
         return None
 
-    def status_counts(self,key="U49"):
+    def status_counts(self,key=None):
+        key=key or self.current_key
         df=self.schedules[key]; vc=df["Status"].value_counts()
         return {"Total":len(df),"Completed":int(vc.get("Completed",0)),"In Progress":int(vc.get("In Progress",0)),"Not Started":int(vc.get("Not Started",0))}
 
-    def status_percentages(self,key="U49"):
+    def status_percentages(self,key=None):
         c=self.status_counts(key); n=c["Total"] or 1
         return {k+" %":100*c[k]/n for k in ["Completed","In Progress","Not Started"]}
 
@@ -134,7 +141,7 @@ class NIHModel:
             rows.append({
                 "Date":d,
                 "Baseline (U38)":int((bfin<=e).sum()),
-                "Planned / Forecast (U49)":int((cfin<=e).sum()),
+                "Planned / Forecast":int((cfin<=e).sum()),
                 "Actual":int((afin<=min(e,dd)).sum()) if pd.notna(dd) else int((afin<=e).sum()),
             })
         return pd.DataFrame(rows)
@@ -142,17 +149,17 @@ class NIHModel:
     def scope_diagnostics(self):
         return {
             "HELIX Filter":"Resp | SRLM → Helix | Electrical / Helix | Fire Alarm",
-            "U49 HELIX Activities":len(self.current),
-            "U49 Raw Activities":len(self.raw_schedules["U49"]),
+            "Current HELIX Activities":len(self.current),
+            "Current Raw Activities":len(self.raw_schedules[self.current_key]),
             "HELIX Activity IDs":len(self.scope_codes),
             "Baseline U38 Matches":len(self.baseline),
-            "Previous U48 Matches":len(self.previous),
+            "Previous Update Matches":len(self.previous),
         }
 
 
 def build_model(data_dir:Path):
     tables={}; projects={}; raw={}
-    for n in range(38,50):
+    for n in range(38,51):
         key=f"U{n}"; p=data_dir/f"{key}.xer"
         if not p.exists(): continue
         t=parse_xer(p); tables[key]=t
@@ -161,8 +168,9 @@ def build_model(data_dir:Path):
     missing=[k for k in ("U38","U48","U49") if k not in tables]
     if missing: raise ValueError("Missing required schedules: "+", ".join(missing))
 
-    scope=helix_task_codes(tables["U49"])
-    if not scope: raise ValueError("HELIX scope was not found under Resp | SRLM in U49.")
+    latest="U50" if "U50" in tables else "U49"
+    scope=helix_task_codes(tables[latest])
+    if not scope: raise ValueError("HELIX scope was not found under Resp | SRLM in current update.")
     schedules={}
     for key,df in raw.items():
         schedules[key]=df[df.get("task_code",pd.Series(index=df.index,dtype=object)).astype(str).isin(scope)].copy()
