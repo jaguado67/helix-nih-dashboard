@@ -8,9 +8,9 @@ st.set_page_config(page_title='HELIX · NIH Hospital Dashboard',page_icon='🏥'
 
 def materialize(root:Path):
     runtime=Path('/tmp/helix_nih_data'); runtime.mkdir(parents=True,exist_ok=True)
-    for n in range(38,51):
+    for n in range(38,101):
         raw=root/f'U{n}.xer'; gz=root/f'U{n}.xer.gz'; target=runtime/f'U{n}.xer'
-        if target.exists(): continue
+        if target.exists(): target.unlink()
         if raw.exists():
             shutil.copy2(raw,target)
         elif gz.exists():
@@ -25,12 +25,12 @@ def materialize(root:Path):
 
 root=Path(__file__).resolve().parent/'data'
 data=materialize(root)
-MODEL_VERSION='nih-helix-standard-v0.3.0-2026-10-21'
+MODEL_VERSION='nih-historical-v0.4.0-2026-10-21'
 @st.cache_resource(show_spinner='Reading NIH schedules…')
 def load_model(path,version):return build_model(Path(path))
 try:model=load_model(str(data),MODEL_VERSION)
 except Exception as exc:
     st.error(f'NIH dashboard could not be built: {exc}'); st.stop()
-if model.current_key != "U50":
-    st.info("U50 XER is not available in the deployed data. Showing the latest verified schedule: U49. Upload U50.xer to the data directory to activate the U49 vs U50 comparison.")
+if model.current_key == "U49":
+    st.info("U50 XER has not been loaded. Showing the latest available schedule: U49.")
 render_dashboard(model)
