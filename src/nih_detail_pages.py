@@ -107,72 +107,70 @@ def type_of(name):
             return label
     return "Other"
 
-def variance_details(model,key,field):
-    baseline=scoped(model,"U38")[["task_code","task_name","target_start_date","target_end_date"]].copy()
-    if field=="Start":
-        bcol="target_start_date"
-        choices=["act_start_date","early_start_date","target_start_date"]
-    else:
-        bcol="target_end_date"
-        choices=["act_end_date","reend_date","early_end_date","target_end_date"]
-    current=scoped(model,key)
-    current=current.drop_duplicates("task_code").set_index("task_code")
-    baseline=baseline.drop_duplicates("task_code").set_index("task_code")
-    common=baseline.index.intersection(current.index)
-    baseline=baseline.loc[common]
-    current=current.loc[common]
-    planned=pd.to_datetime(baseline[bcol],errors="coerce")
-    actual=pd.Series(pd.NaT,index=current.index,dtype="datetime64[ns]")
-    if field=="Start":
-        complete=current["Status"].isin(["Completed","In Progress"])
-        first=pd.to_datetime(current["act_start_date"],errors="coerce")
-        actual=actual.where(actual.notna(),first.where(complete))
-        for c in choices[1:]:
-            actual=actual.where(actual.notna(),pd.to_datetime(current[c],errors="coerce"))
-    else:
-        if "act_end_date" in current:
-            actual=actual.where(actual.notna(),pd.to_datetime(current["act_end_date"],errors="coerce").where(current["Status"].eq("Completed")))
-        for c in choices[1:]:
-            actual=actual.where(actual.notna(),pd.to_datetime(current[c],errors="coerce"))
-    delta=(planned-actual).dt.total_seconds()/86400
-    return pd.DataFrame({"Activity ID":common,"Level":baseline["task_name"].map(level_of).values,
-        "Activity Type":baseline["task_name"].map(type_of).values,
-        "Variance":delta.values}).dropna(subset=["Variance"])
+def variance_details(model,previous_key,current_key,field):
+    prior=scoped(model,previous_key).drop_duplicates("task_code").set_index("task_code")
+    current=scoped(model,current_key).drop_duplicates("task_code").set_index("task_code")
+    ids=prior.index.intersection(current.index)
+    prior=prior.loc[ids]
+    current=current.loc[ids]
+    columns=(["act_start_date","early_start_date","target_start_date"] if field=="Start"
+             else ["act_end_date","reend_date","early_end_date","target_end_date"])
+    def choose(df):
+        series=pd.Series(pd.NaT,index=df.index,dtype="datetime64[ns]")
+        for column in columns:
+            if column in df:
+                values=pd.to_datetime(df[column],errors="coerce")
+                if column=="act_end_date":
+                    values=values.where(df["Status"].eq("Completed"))
+                if column=="act_start_date":
+                    values=values.where(df["Status"].isin(["Completed","In Progress"]))
+                series=series.where(series.notna(),values)
+        return series
+    before=choose(prior)
+    after=choose(current)
+    days=(before-after).dt.total_seconds()/86400
+    return pd.DataFrame({"Activity ID":ids,
+        "Level":prior["task_name"].map(level_of).values,
+        "Activity Type":prior["task_name"].map(type_of).values,
+        "Variance":days.values}).dropna(subset=["Variance"])
 
 def render_variance(model):
     title("SCHEDULE VARIANCE ANALYSIS")
-    updates=history_selection(model,"variance_versions")
-    updates=[k for k in updates if k!="U38"]
-    if not updates:
-        st.info("Select at least one update.")
+    available=[k for k in model.available_updates if k!="U38"]
+    c1,c2=st.columns(2)
+    with c1:
+        previous=st.selectbox("Previous Update",available,index=available.index(model.previous_key))
+    with c2:
+        current=st.selectbox("Current Update",available,index=available.index(model.current_key))
+    if int(previous[1:])>=int(current[1:]):
+        st.warning("Select a Current Update later than the Previous Update.")
         return
-    chosen=st.selectbox("Heat map update",updates,index=len(updates)-1)
-    for mode in ("Start","Finish"):
-        details=variance_details(model,chosen,mode)
-        if details.empty:
-            st.warning(f"No comparable dated activities for {mode}.")
-            continue
-        st.markdown(f"**{mode.upper()} VARIANCE HEAT MAP · {chosen} VS U38**")
-        matrix=details.pivot_table(index="Level",columns="Activity Type",values="Variance",aggfunc="mean")
-        order=[x for x in LEVELS+["Others"] if x in matrix.index]
-        matrix=matrix.reindex(order)
-        fig=go.Figure(go.Heatmap(z=matrix.to_numpy(),x=list(matrix.columns),y=list(matrix.index),
-            colorscale=[[0,"#BA1238"],[0.5,"#F6F2CD"],[1,"#12905C"]],zmid=0,
-            text=matrix.round(0).astype("Int64").astype(str).replace("<NA>",""),texttemplate="%{text}",
-            colorbar=dict(title="Days")))
-        fig.update_layout(height=480,margin=dict(l=20,r=30,t=25,b=90),xaxis_title="Activity Type",yaxis_title="Level")
-        st.plotly_chart(fig,use_container_width=True)
-    st.markdown("**START & FINISH VARIANCE BY LEVEL · HISTORICAL MOVEMENT**")
+    categories=["Cans/Troughs/XFMRs","Conduits","Elev. Pri. Conduit","Other","Pull Wire","Risers + OH"]
+    levels=["L9","L8","L7","L6","L5","L4","L3","L2","L1","B1","B2","Others"]
     for metric in ("Start","Finish"):
-        plot=go.Figure()
-        for i,key in enumerate(updates):
-            data=variance_details(model,key,metric)
-            grouped=data.groupby("Level")["Variance"].mean()
-            plot.add_trace(go.Scatter(x=LEVELS,y=[grouped.get(level,None) for level in LEVELS],
-                name=key,mode="lines+markers",line=dict(color=COLORS[i%len(COLORS)])))
-        plot.update_layout(title=f"{metric} Variance vs U38",height=310,plot_bgcolor="white",
-            yaxis_title="Calendar Days (negative = later)",legend=dict(orientation="h",y=1.17),
-            margin=dict(l=25,r=20,t=65,b=20))
-        plot.update_yaxes(gridcolor="#DCE4EC",zeroline=True,zerolinecolor="#999")
-        st.plotly_chart(plot,use_container_width=True)
-    st.dataframe(variance_details(model,chosen,"Finish").sort_values("Variance"),use_container_width=True,hide_index=True)
+        details=variance_details(model,previous,current,metric)
+        st.markdown(f"**{metric.upper()} VARIANCE HEAT MAP · {previous} → {current}**")
+        if details.empty:
+            st.info("No comparable activities with valid dates.")
+            continue
+        matrix=details.pivot_table(index="Level",columns="Activity Type",values="Variance",aggfunc="mean")
+        matrix=matrix.reindex(index=levels,columns=categories)
+        z=matrix.to_numpy()
+        maxabs=max(1.0,float(abs(details["Variance"]).quantile(0.95)))
+        labels=matrix.apply(lambda column:column.map(lambda value: "" if pd.isna(value) else f"{value:+.0f}"))
+        heat=go.Figure(go.Heatmap(
+            x=categories,y=levels,z=z,
+            zmin=-maxabs,zmax=maxabs,zmid=0,
+            colorscale=[[0.0,"#B50932"],[0.25,"#F36A43"],[0.5,"#F7E9B0"],[0.75,"#BDE36F"],[1,"#147E47"]],
+            text=labels.to_numpy(),texttemplate="%{text}",
+            textfont=dict(size=12,color="#162333"),
+            xgap=2,ygap=2,
+            hovertemplate="Level: %{y}<br>Type: %{x}<br>Mean variance: %{z:.1f} calendar days<extra></extra>",
+            colorbar=dict(title="Calendar days")))
+        heat.update_layout(height=550,margin=dict(l=60,r=35,t=20,b=80),
+            xaxis_title="Activity Type",yaxis_title="Level",yaxis=dict(autorange="reversed"),
+            plot_bgcolor="#D3D3D3")
+        st.plotly_chart(heat,use_container_width=True)
+    with st.expander("Activity Variance Details",expanded=False):
+        detail=variance_details(model,previous,current,"Finish")
+        st.dataframe(detail.sort_values("Variance"),use_container_width=True,hide_index=True)
