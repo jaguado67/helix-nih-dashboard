@@ -88,11 +88,12 @@ class NIHModel:
     raw_schedules:dict
     projects:dict
     scope_codes:set
+    native_scopes:dict
 
     @property
-    def current_key(self): return "U50" if "U50" in self.schedules else "U49"
+    def current_key(self): return max((k for k in self.schedules if k != "U38"),key=lambda x:int(x[1:]))
     @property
-    def previous_key(self): return "U49" if self.current_key == "U50" else "U48"
+    def previous_key(self): return sorted((k for k in self.schedules if k not in ("U38",self.current_key)),key=lambda x:int(x[1:]))[-1]
     @property
     def available_updates(self): return sorted(self.schedules, key=lambda k:int(k[1:]))
     @property
@@ -172,6 +173,44 @@ class NIHModel:
                             "Monthly Actual":int(actual_dates.dt.to_period("M").eq(month.to_period("M")).sum())})
         return pd.DataFrame(records)
 
+    def historical_curve(self, key, common_scope=False):
+        """Per-update as-of forecast; preserves each update's original activity count."""
+        df=self.schedules[key] if common_scope else self.native_scopes[key]
+        dd=pdate(self.projects[key],"last_recalc_date","data_date","last_schedule_date")
+        finish=forecast_finish(df)
+        done=df["Status"].eq("Completed")
+        actual_end=pd.to_datetime(df["act_end_date"],errors="coerce")
+        actual_end=actual_end.where(done & actual_end.le(dd)) if pd.notna(dd) else actual_end.where(done)
+        open_finish=finish.where(~done | actual_end.isna())
+        all_dates=pd.concat([actual_end.dropna(),open_finish.dropna()])
+        if all_dates.empty:
+            return pd.DataFrame(columns=["Date","Forecast","Actual"]),dd
+        first=all_dates.min().to_period("M").to_timestamp()
+        last=min(all_dates.max().to_period("M").to_timestamp(),pd.Timestamp("2027-05-01"))
+        dates=pd.date_range(first,last,freq="MS")
+        completed=int(actual_end.notna().sum())
+        rows=[]
+        for date in dates:
+            end=date+pd.offsets.MonthEnd(0)
+            actual=int(actual_end.le(min(end,dd)).sum()) if pd.notna(dd) else int(actual_end.le(end).sum())
+            forecast=completed+int(open_finish.le(max(end,dd)).sum()) if pd.notna(dd) and end>=dd else float("nan")
+            rows.append({"Date":date,"Forecast":forecast,"Actual":actual if pd.isna(dd) or end<=dd else float("nan")})
+        return pd.DataFrame(rows),dd
+
+    def historical_diagnostics(self,keys):
+        result=[]
+        for key in keys:
+            native=self.native_scopes[key]
+            shared=self.schedules[key]
+            data_date=pdate(self.projects[key],"last_recalc_date","data_date","last_schedule_date")
+            actual=int(native["Status"].eq("Completed").sum())
+            result.append({"Update":key,"Data Date":data_date.date() if pd.notna(data_date) else None,
+                           "Total Activities":len(native),"Completed":actual,
+                           "Remaining":len(native)-actual,
+                           "Current-scope Matches":len(shared),
+                           "Scope Difference vs Current":len(native)-len(shared)})
+        return pd.DataFrame(result)
+
     def scope_diagnostics(self):
         return {
             "HELIX Filter":"Resp | SRLM → Helix | Electrical / Helix | Fire Alarm",
@@ -185,7 +224,7 @@ class NIHModel:
 
 def build_model(data_dir:Path):
     tables={}; projects={}; raw={}
-    for n in range(38,51):
+    for n in range(38,101):
         key=f"U{n}"; p=data_dir/f"{key}.xer"
         if not p.exists(): continue
         t=parse_xer(p); tables[key]=t
@@ -194,10 +233,14 @@ def build_model(data_dir:Path):
     missing=[k for k in ("U38","U48","U49") if k not in tables]
     if missing: raise ValueError("Missing required schedules: "+", ".join(missing))
 
-    latest="U50" if "U50" in tables else "U49"
+    latest=max((key for key in tables if key!="U38"),key=lambda k:int(k[1:]))
     scope=helix_task_codes(tables[latest])
     if not scope: raise ValueError("HELIX scope was not found under Resp | SRLM in current update.")
     schedules={}
     for key,df in raw.items():
         schedules[key]=df[df.get("task_code",pd.Series(index=df.index,dtype=object)).astype(str).isin(scope)].copy()
-    return NIHModel(schedules,raw,projects,scope)
+    native_scopes={}
+    for key,df in raw.items():
+        own_scope=helix_task_codes(tables[key])
+        native_scopes[key]=df[df["task_code"].astype(str).isin(own_scope)].copy()
+    return NIHModel(schedules,raw,projects,scope,native_scopes)
