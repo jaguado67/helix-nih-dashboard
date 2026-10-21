@@ -142,10 +142,10 @@ def render_dashboard(m):
     if selected:
         cohort=None
         if common:
-            cohort=set.intersection(*(set(m.native_scopes[k]["task_code"].astype(str)) for k in ["U38"]+selected))
+            cohort=set.intersection(*(set(m.raw_schedules[k]["task_code"].astype(str)) for k in ["U38"]+selected)) & set(m.native_scopes["U38"]["task_code"].astype(str))
             st.caption(f"Strict common cohort: {len(cohort):,} Activity IDs shared by U38 and all selected updates.")
         hist_fig=go.Figure()
-        baseline=m.native_scopes["U38"]
+        baseline=m.raw_schedules["U38"]
         if cohort is not None:
             baseline=baseline[baseline["task_code"].astype(str).isin(cohort)]
         dates=pd.to_datetime(baseline["target_end_date"],errors="coerce").fillna(pd.to_datetime(baseline["early_end_date"],errors="coerce"))
@@ -156,11 +156,13 @@ def render_dashboard(m):
         palette=["#E4572E","#7654A3","#159B77","#C08D23","#A83B69","#444F88","#008E9A"]
         for i,key in enumerate(selected):
             history,cutoff=m.historical_curve(key,activity_ids=cohort)
+            if m.native_scopes[key].empty and cohort is None:
+                st.warning(f"{key}: native HELIX code mapping returned zero activities; select strict common scope for an ID-based comparison.")
             if history.empty:
                 continue
             forecast=history[["Date","Forecast"]].dropna()
             if pd.notna(cutoff):
-                completed=int((m.native_scopes[key][m.native_scopes[key]["task_code"].astype(str).isin(cohort)] if cohort is not None else m.native_scopes[key])["Status"].eq("Completed").sum())
+                completed=int((m.raw_schedules[key][m.raw_schedules[key]["task_code"].astype(str).isin(cohort)] if cohort is not None else m.native_scopes[key])["Status"].eq("Completed").sum())
                 forecast=pd.concat([pd.DataFrame({"Date":[cutoff],"Forecast":[completed]}),forecast.loc[forecast["Date"]>cutoff]],ignore_index=True)
             hist_fig.add_trace(go.Scatter(x=forecast["Date"],y=forecast["Forecast"],
                                           name=update_label(m,key),mode="lines",
