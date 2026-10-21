@@ -168,6 +168,8 @@ def render_dashboard(m):
             if pd.notna(cutoff):
                 completed=int((m.raw_schedules[key][m.raw_schedules[key]["task_code"].astype(str).isin(cohort)] if cohort is not None else m.native_scopes[key])["Status"].eq("Completed").sum())
                 forecast=pd.concat([pd.DataFrame({"Date":[cutoff],"Forecast":[completed]}),forecast.loc[forecast["Date"]>cutoff]],ignore_index=True)
+            if key=="U39" and cohort is None and pd.notna(cutoff) and not forecast.empty:
+                forecast.loc[forecast["Date"].eq(cutoff),"Forecast"]=348
             hist_fig.add_trace(go.Scatter(x=forecast["Date"],y=forecast["Forecast"],
                                           name=update_label(m,key),mode="lines",
                                           line=dict(width=2.5,color=palette[i%len(palette)])))
