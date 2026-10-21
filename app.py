@@ -26,7 +26,7 @@ def materialize(root:Path):
 
 root=Path(__file__).resolve().parent/'data'
 data=materialize(root)
-MODEL_VERSION='nih-pages-v0.6.0-2026-10-21'
+MODEL_VERSION='nih-pages-v0.6.1-2026-10-21'
 @st.cache_resource(show_spinner='Reading NIH schedules…')
 def load_model(path,version):return build_model(Path(path))
 try:model=load_model(str(data),MODEL_VERSION)
@@ -46,17 +46,24 @@ logo_candidates=[]
 for directory in ("LOGOS","logos","assets","images"):
     folder=Path(__file__).resolve().parent/directory
     if folder.is_dir():
-        logo_candidates += [f for f in folder.iterdir() if f.suffix.lower() in (".png",".jpg",".jpeg",".webp")]
-left,centre,right=st.columns([1.2,5.7,1.4],vertical_alignment="center")
+        logo_candidates += sorted([f for f in folder.iterdir() if f.suffix.lower() in (".png",".jpg",".jpeg",".webp")])
+left,center,right=st.columns([1,5,1],vertical_alignment="center")
 with left:
     if logo_candidates:
-        st.image(str(logo_candidates[0]),width=150)
-with centre:
-    st.markdown("<div style='color:#fff;background:#0B2E52;padding:18px;border-radius:5px 5px 0 0'><div style='font-size:22px;font-weight:800'>HELIX Project &amp; Portfolio Control Center</div><div style='font-size:12px'>NIH Schedule Performance Dashboard</div></div>",unsafe_allow_html=True)
+        st.image(str(logo_candidates[0]),width=115)
+with center:
+    st.markdown("""<div style="background:#0B2E52;color:white;padding:19px 24px;min-height:92px;box-sizing:border-box;border-radius:5px">
+       <div style="font-size:21px;line-height:1.4;font-weight:800">HELIX Project &amp; Portfolio Control Center</div>
+       <div style="font-size:12px;margin-top:4px">NIH Schedule Performance Dashboard</div>
+    </div>""",unsafe_allow_html=True)
 with right:
     if len(logo_candidates)>1:
-        st.image(str(logo_candidates[1]),width=150)
-st.caption(f"BASELINE · U38     |     PREVIOUS · {model.previous_key}     |     CURRENT · {model.current_key}     |     DATA DATE · {model.data_date.strftime('%d-%b-%Y') if model.data_date is not None and not __import__('pandas').isna(model.data_date) else '—'}")
+        st.image(str(logo_candidates[1]),width=115)
+st.markdown(f"""<div style="background:#eef3f8;color:#163b60;padding:9px 14px;font-weight:700;font-size:12px">
+BASELINE · U38 &nbsp;&nbsp; | &nbsp;&nbsp; PREVIOUS · {model.previous_key}
+&nbsp;&nbsp; | &nbsp;&nbsp; CURRENT · {model.current_key}
+&nbsp;&nbsp; | &nbsp;&nbsp; DATA DATE · {model.data_date.strftime('%d-%b-%Y') if model.data_date is not None and not __import__('pandas').isna(model.data_date) else '—'}
+</div>""",unsafe_allow_html=True)
 page=st.segmented_control("NIH Dashboard",["Project Overview","Milestones & Energization","Schedule Variance Analysis"],default="Project Overview",key="nih_page",label_visibility="collapsed") or "Project Overview"
 if page=="Project Overview":
     render_dashboard(model)
