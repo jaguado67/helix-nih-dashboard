@@ -160,8 +160,6 @@ def render_dashboard(m):
         palette=["#E4572E","#7654A3","#159B77","#C08D23","#A83B69","#444F88","#008E9A"]
         for i,key in enumerate(selected):
             history,cutoff=m.historical_curve(key,activity_ids=cohort)
-            if m.native_scopes[key].empty and cohort is None:
-                st.warning(f"{key}: native HELIX code mapping returned zero activities; select strict common scope for an ID-based comparison.")
             if history.empty:
                 continue
             forecast=history[["Date","Forecast"]].dropna()
