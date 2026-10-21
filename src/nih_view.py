@@ -140,19 +140,27 @@ def render_dashboard(m):
                         horizontal=True,key="nih_scope_mode")
     common=scope_mode.startswith("Common")
     if selected:
+        cohort=None
+        if common:
+            cohort=set.intersection(*(set(m.native_scopes[k]["task_code"].astype(str)) for k in ["U38"]+selected))
+            st.caption(f"Strict common cohort: {len(cohort):,} Activity IDs shared by U38 and all selected updates.")
         hist_fig=go.Figure()
-        base=m.scurve()
-        base=base[base["Date"]<=pd.Timestamp("2027-05-01")]
+        baseline=m.native_scopes["U38"]
+        if cohort is not None:
+            baseline=baseline[baseline["task_code"].astype(str).isin(cohort)]
+        dates=pd.to_datetime(baseline["target_end_date"],errors="coerce").fillna(pd.to_datetime(baseline["early_end_date"],errors="coerce"))
+        months=pd.date_range("2023-03-01","2027-05-01",freq="MS")
+        base=pd.DataFrame({"Date":months,"Baseline":[int(dates.le(month+pd.offsets.MonthEnd(0)).sum()) for month in months]})
         hist_fig.add_trace(go.Scatter(x=base["Date"],y=base["Baseline"],name="Baseline (U38)",
                                       mode="lines",line=dict(color=BLUE,width=4)))
         palette=["#E4572E","#7654A3","#159B77","#C08D23","#A83B69","#444F88","#008E9A"]
         for i,key in enumerate(selected):
-            history,cutoff=m.historical_curve(key,common_scope=common)
+            history,cutoff=m.historical_curve(key,activity_ids=cohort)
             if history.empty:
                 continue
             forecast=history[["Date","Forecast"]].dropna()
             if pd.notna(cutoff):
-                completed=int((m.schedules[key] if common else m.native_scopes[key])["Status"].eq("Completed").sum())
+                completed=int((m.native_scopes[key][m.native_scopes[key]["task_code"].astype(str).isin(cohort)] if cohort is not None else m.native_scopes[key])["Status"].eq("Completed").sum())
                 forecast=pd.concat([pd.DataFrame({"Date":[cutoff],"Forecast":[completed]}),forecast.loc[forecast["Date"]>cutoff]],ignore_index=True)
             hist_fig.add_trace(go.Scatter(x=forecast["Date"],y=forecast["Forecast"],
                                           name=update_label(m,key),mode="lines",
@@ -165,7 +173,7 @@ def render_dashboard(m):
         st.plotly_chart(hist_fig,use_container_width=True,config={"displayModeBar":False})
         st.caption("Each colored curve retains that update's own forecast as of its Data Date. "
                    "The U38 baseline is fixed. Historical forecasts are not a measure of actual progress.")
-        st.dataframe(m.historical_diagnostics(selected),use_container_width=True,hide_index=True)
+        st.dataframe(m.historical_diagnostics(selected,activity_ids=cohort),use_container_width=True,hide_index=True)
         st.caption("Activity totals may differ across updates because the scope changed. "
                    "Use Common activity IDs for a more controlled date comparison.")
     else:
