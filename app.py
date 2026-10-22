@@ -42,6 +42,20 @@ div[data-testid="stSegmentedControl"] {background:#0B2E52;padding:8px;border-rad
 div[data-testid="stSegmentedControl"] button {font-weight:700}
 [data-testid="stHeader"] {background: #ffffff;}
 [data-testid="stMainBlockContainer"] {padding-top: 3.3rem !important;}
+
+.nih-header-row {display:grid;grid-template-columns:minmax(145px, 1fr) minmax(0, 5.8fr) minmax(145px, 1fr);gap:12px;align-items:stretch;margin:0 0 14px}
+.nih-logo-card {height:108px;border:1px solid #cfdae7;border-radius:7px;background:#fff;display:flex;align-items:center;justify-content:center;padding:9px;box-sizing:border-box}
+.nih-logo-card img {display:block;width:100%;height:100%;object-fit:contain}
+.nih-header-main {min-height:108px;border-radius:6px;background:#0B2E52;display:flex;align-items:center;justify-content:space-between;gap:14px;padding:18px 22px;color:white;box-sizing:border-box}
+.nih-header-title {font-size:22px;font-weight:800;line-height:1.25}
+.nih-header-sub {font-size:12px;margin-top:9px}
+.nih-header-tags {display:flex;gap:7px;white-space:nowrap}
+.nih-header-tags span {padding:10px 9px;border:1px solid #819ab6;border-radius:5px;font-size:10px;font-weight:800}
+.nih-header-date {font-size:10px;line-height:1.75;text-align:right;white-space:nowrap}
+.nih-tabs-wrap {height:0}
+div[data-testid="stSegmentedControl"] {background:#fff!important;border:1px solid #cfd9e6;border-radius:8px;padding:14px!important;display:flex;justify-content:center;margin-bottom:15px}
+@media(max-width:1100px){.nih-header-main{flex-wrap:wrap}.nih-header-title{font-size:18px}.nih-header-tags{order:3}.nih-header-row{grid-template-columns:125px minmax(0,1fr) 125px}}
+@media(max-width:720px){.nih-header-row{grid-template-columns:1fr 1fr}.nih-header-main{grid-column:1/-1;grid-row:1}.nih-logo-card{height:75px}.nih-header-date{text-align:left}}
 </style>
 """,unsafe_allow_html=True)
 logo_dir=Path(__file__).resolve().parent/"LOGOS"
@@ -52,24 +66,35 @@ def official_logo(filename):
     path=logo_dir/filename
     return str(path) if path.exists() else None
 
-left,center,right=st.columns([1.15,5,1.15],vertical_alignment="center")
-with left:
-    logo=official_logo("Helix Electric Horizontral.jpg")
-    if logo: st.image(logo,use_container_width=True)
-with center:
-    st.markdown("""<div style="background:#0B2E52;color:white;padding:27px 24px;min-height:115px;box-sizing:border-box;border-radius:5px">
-       <div style="font-size:21px;line-height:1.4;font-weight:800">HELIX Project &amp; Portfolio Control Center</div>
-       <div style="font-size:12px;margin-top:4px">NIH Schedule Performance Dashboard</div>
-    </div>""",unsafe_allow_html=True)
-with right:
-    logo=official_logo("TORO PMC LOGO 4.png")
-    if logo: st.image(logo,use_container_width=True)
-st.markdown(f"""<div style="background:#eef3f8;color:#163b60;padding:9px 14px;font-weight:700;font-size:12px">
-BASELINE · U38 &nbsp;&nbsp; | &nbsp;&nbsp; PREVIOUS · {model.previous_key}
-&nbsp;&nbsp; | &nbsp;&nbsp; CURRENT · {model.current_key}
-&nbsp;&nbsp; | &nbsp;&nbsp; DATA DATE · {model.data_date.strftime('%d-%b-%Y') if model.data_date is not None and not __import__('pandas').isna(model.data_date) else '—'}
-</div>""",unsafe_allow_html=True)
+import html
+import pandas as pd
+
+logo_left=official_logo("Helix Electric Horizontral.jpg")
+logo_right=official_logo("TORO PMC LOGO 4.png")
+def logo_card(logo):
+    if logo is None: return ""
+    encoded=base64.b64encode(logo if isinstance(logo,bytes) else Path(logo).read_bytes()).decode("ascii")
+    mimetype="image/jpeg" if logo is logo_left else "image/png"
+    return f'<div class="nih-logo-card"><img src="data:{mimetype};base64,{encoded}" alt="Corporate logo"></div>'
+
+stamp=model.data_date.strftime("%d-%b-%Y") if pd.notna(model.data_date) else "—"
+st.markdown(f"""
+<div class="nih-header-row">
+ {logo_card(logo_left)}
+ <div class="nih-header-main">
+  <div class="nih-header-copy">
+   <div class="nih-header-title">HELIX Project &amp; Portfolio Control Center</div>
+   <div class="nih-header-sub">NIH Schedule Performance Dashboard</div>
+  </div>
+  <div class="nih-header-tags"><span>NIH PROJECT DETAIL</span><span>v0.6</span></div>
+  <div class="nih-header-date"><b>Latest Data Date</b> {html.escape(stamp)}<div><b>Current Update</b> {html.escape(model.current_key)}</div><div>Baseline U38 · Previous {html.escape(model.previous_key)}</div></div>
+ </div>
+ {logo_card(logo_right)}
+</div>
+""",unsafe_allow_html=True)
+st.markdown('<div class="nih-tabs-wrap">',unsafe_allow_html=True)
 page=st.segmented_control("NIH Dashboard",["Project Overview","Milestones & Energization","Schedule Variance Analysis"],default="Project Overview",key="nih_page",label_visibility="collapsed") or "Project Overview"
+st.markdown('</div>',unsafe_allow_html=True)
 if page=="Project Overview":
     render_dashboard(model)
 elif page=="Milestones & Energization":
