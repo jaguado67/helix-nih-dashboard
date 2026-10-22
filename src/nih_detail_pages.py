@@ -185,7 +185,9 @@ def render_variance(model):
     chosen_history=st.multiselect("Historical updates",available,default=history,key="nih_variance_history")
     for metric in ("Start","Finish"):
         fig=go.Figure()
-        summary={"Level":LEVELS}
+        summary={"Level":LEVELS,"U38":[0]*len(LEVELS)}
+        fig.add_trace(go.Scatter(x=LEVELS,y=[0]*len(LEVELS),name="U38",mode="lines+markers",
+            line=dict(width=3,color="#1F2937"),marker=dict(size=6,color="#1F2937")))
         for i,key in enumerate(chosen_history):
             data=variance_details(model,"U38",key,metric)
             means=data.groupby("Level")["Variance"].mean()
