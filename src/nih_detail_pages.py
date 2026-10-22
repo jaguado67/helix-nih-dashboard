@@ -39,6 +39,64 @@ def history_selection(model,prefix,default=None):
 def title(text):
     st.markdown(f'<div style="background:#0B2E52;color:white;padding:12px 16px;font-weight:800;font-size:17px">{text}</div>',unsafe_allow_html=True)
 
+def _milestone_calendar(root,key,code):
+    """Read the activity calendar and exceptions from its P6 XER snapshot."""
+    import re
+    from datetime import timedelta
+    path=root/f"{key}.xer"
+    if not path.exists():
+        return None
+    table=None
+    columns=[]
+    task_calendar=None
+    calendars={}
+    with path.open(encoding="cp1252",errors="ignore") as stream:
+        for line in stream:
+            parts=line.rstrip("\r\n").split("\t")
+            if parts[0]=="%T":
+                table=parts[1] if len(parts)>1 else None
+            elif parts[0]=="%F":
+                columns=parts[1:]
+            elif parts[0]=="%R" and table in ("TASK","CALENDAR"):
+                row=dict(zip(columns,parts[1:]))
+                if table=="TASK" and row.get("task_code")==code:
+                    task_calendar=row.get("clndr_id")
+                if table=="CALENDAR":
+                    calendars[row.get("clndr_id")]=row
+    if not task_calendar or task_calendar not in calendars:
+        return None
+    c=calendars[task_calendar]
+    raw=c.get("clndr_data","")
+    days_section=raw.split("DaysOfWeek()",1)[-1].split("Exceptions()",1)[0]
+    workdays=set()
+    for day,segment in re.findall(r"\(0\|\|(\d)\(\)\((.*?)\)(?=\x7f\x7f|$)",days_section,re.S):
+        if "s|" in segment:
+            workdays.add((int(day)+5)%7)  # P6: 1=Sunday, 2=Monday
+    if not workdays:
+        workdays=set(range(7)) if "7D" in c.get("clndr_name","") else set(range(5))
+    exception_text=raw.split("Exceptions()",1)[-1]
+    entries=list(re.finditer(r"\(\d+\(d\|(\d+)\)",exception_text))
+    overrides={}
+    base=pd.Timestamp("1899-12-30")
+    for idx,match in enumerate(entries):
+        segment=exception_text[match.end():entries[idx+1].start() if idx+1<len(entries) else len(exception_text)]
+        date=(base+pd.Timedelta(days=int(match.group(1)))).date()
+        overrides[date]="s|" in segment
+    return workdays,overrides
+
+def _workday_shift(baseline,current,calendar):
+    if pd.isna(baseline) or pd.isna(current) or calendar is None:
+        return None
+    start=pd.Timestamp(baseline).normalize()
+    finish=pd.Timestamp(current).normalize()
+    if start==finish:
+        return 0
+    direction=-1 if finish>start else 1
+    left,right=(start,finish) if finish>start else (finish,start)
+    weekdays,overrides=calendar
+    dates=pd.date_range(left+pd.Timedelta(days=1),right,freq="D")
+    return direction*sum(overrides.get(day.date(),day.weekday() in weekdays) for day in dates)
+
 def render_milestones(model):
     title("KEY PROJECT MILESTONES")
     updates=history_selection(model,"milestone_versions")
@@ -46,6 +104,8 @@ def render_milestones(model):
         st.info("Select at least one update.")
         return
     rows=[]
+    from pathlib import Path
+    calendar_root=Path("/tmp/helix_nih_data")
     for code in MILESTONES:
         names=frame(model,model.current_key)
         hit=names[names["task_code"].astype(str).eq(code)]
@@ -56,7 +116,8 @@ def render_milestones(model):
         for key in updates:
             row[key]=date_text(finish_by_code(model,key,code))
         last=finish_by_code(model,model.current_key,code)
-        row["Variance (calendar days)"]=int((base.normalize()-last.normalize()).days) if pd.notna(base) and pd.notna(last) else None
+        activity_calendar=_milestone_calendar(calendar_root,model.current_key,code)
+        row["Variance (working days)"]=_workday_shift(base,last,activity_calendar)
         rows.append(row)
     if rows:
         df=pd.DataFrame(rows)
