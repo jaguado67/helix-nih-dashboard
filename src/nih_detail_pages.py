@@ -69,7 +69,7 @@ def _milestone_calendar(root,key,code):
     raw=c.get("clndr_data","")
     days_section=raw.split("DaysOfWeek()",1)[-1].split("Exceptions()",1)[0]
     workdays=set()
-    days=list(re.finditer(r"\\(0\\|\\|([1-7])\\(\\)\\(",days_section))
+    days=list(re.finditer(r"\(0\|\|([1-7])\(\)\(",days_section))
     for idx,match in enumerate(days):
         fragment=days_section[match.end():days[idx+1].start() if idx+1<len(days) else len(days_section)]
         if "s|" in fragment:
