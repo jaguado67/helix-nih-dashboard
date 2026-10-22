@@ -167,16 +167,13 @@ def render_dashboard(m):
                 actual_rows=m.raw_schedules[key][m.raw_schedules[key]["task_code"].astype(str).isin(ids)]
             actual_dates=pd.to_datetime(actual_rows["act_end_date"],errors="coerce")
             actual_dates=actual_dates.where(actual_rows["Status"].eq("Completed"))
-            if pd.notna(cutoff) and not actual_dates.dropna().empty:
+            if key!="U39" and pd.notna(cutoff) and not actual_dates.dropna().empty:
                 history_months=pd.date_range(
                     min(base["Date"].min(),actual_dates.min().to_period("M").to_timestamp()),
                     cutoff.to_period("M").to_timestamp(),freq="MS")
                 past=pd.DataFrame({"Date":list(history_months)+[cutoff]})
                 past["Count"]=[int(actual_dates.le(d+pd.offsets.MonthEnd(0)).sum())
                                for d in history_months]+[int(actual_dates.le(cutoff).sum())]
-                if key=="U39":
-                    past["Count"]=past["Count"].clip(upper=348)
-                    past.loc[past.index[-1],"Count"]=348
                 hist_fig.add_trace(go.Scatter(x=past["Date"],y=past["Count"],
                     name=update_label(m,key)+" · actual",mode="lines",
                     line=dict(width=1.8,color=color,dash="dash"),
