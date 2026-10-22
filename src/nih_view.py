@@ -228,11 +228,11 @@ def render_dashboard(m):
                       categoryarray=["Completed","In Progress","Not Started"])
     status_col,monthly_col=st.columns(2,gap="large")
     with status_col:
-        st.markdown("**ACTIVITY STATUS · PREVIOUS VS CURRENT**")
+        st.markdown("<div style=\"text-align:center;font-weight:800;margin-bottom:12px\">ACTIVITY STATUS · PREVIOUS VS CURRENT</div>",unsafe_allow_html=True)
         fig2.update_layout(height=370,legend=dict(orientation="h",y=-0.24,x=0))
         st.plotly_chart(fig2,use_container_width=True,config={"displayModeBar":False})
     with monthly_col:
-        st.markdown("**MONTHLY PROGRESS · PLANNED VS COMPLETED**")
+        st.markdown("<div style=\"text-align:center;font-weight:800;margin-bottom:12px\">MONTHLY PROGRESS · PLANNED VS COMPLETED</div>",unsafe_allow_html=True)
         monthly=[]
         available_hist=sorted([k for k in m.available_updates if k!="U38"],key=lambda k:int(k[1:]))
         for newer in [previous,current]:
