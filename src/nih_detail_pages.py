@@ -69,13 +69,15 @@ def _milestone_calendar(root,key,code):
     raw=c.get("clndr_data","")
     days_section=raw.split("DaysOfWeek()",1)[-1].split("Exceptions()",1)[0]
     workdays=set()
-    for day,segment in re.findall(r"\(0\|\|(\d)\(\)\((.*?)\)(?=\x7f\x7f|$)",days_section,re.S):
-        if "s|" in segment:
-            workdays.add((int(day)+5)%7)  # P6: 1=Sunday, 2=Monday
+    days=list(re.finditer(r"\\(0\\|\\|([1-7])\\(\\)\\(",days_section))
+    for idx,match in enumerate(days):
+        fragment=days_section[match.end():days[idx+1].start() if idx+1<len(days) else len(days_section)]
+        if "s|" in fragment:
+            workdays.add((int(match.group(1))+5)%7)  # P6: 1=Sunday, 2=Monday
     if not workdays:
         workdays=set(range(7)) if "7D" in c.get("clndr_name","") else set(range(5))
     exception_text=raw.split("Exceptions()",1)[-1]
-    entries=list(re.finditer(r"\(\d+\(d\|(\d+)\)",exception_text))
+    entries=list(re.finditer(r"\(0\|\|\d+\(d\|(\d+)\)",exception_text))
     overrides={}
     base=pd.Timestamp("1899-12-30")
     for idx,match in enumerate(entries):
