@@ -37,11 +37,11 @@ if model.current_key == "U49":
 st.markdown("""
 <style>
 [data-testid="stSidebar"] {display:none}
-.block-container {max-width:1550px;padding-top:3.3rem}
+.block-container {max-width:1550px;padding-top:1.35rem}
 div[data-testid="stSegmentedControl"] {background:#0B2E52;padding:8px;border-radius:0 0 6px 6px}
 div[data-testid="stSegmentedControl"] button {font-weight:700}
 [data-testid="stHeader"] {background: #ffffff;}
-[data-testid="stMainBlockContainer"] {padding-top: 3.3rem !important;}
+[data-testid="stMainBlockContainer"] {padding-top: 1.35rem !important;}
 
 .nih-header-row {display:grid;grid-template-columns:minmax(145px, 1fr) minmax(0, 5.8fr) minmax(145px, 1fr);gap:12px;align-items:stretch;margin:0 0 14px}
 .nih-logo-card {height:108px;border:1px solid #cfdae7;border-radius:7px;background:#fff;display:flex;align-items:center;justify-content:center;padding:9px;box-sizing:border-box}
