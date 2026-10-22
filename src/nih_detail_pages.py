@@ -3,7 +3,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 from src.nih_model import forecast_finish
-from src.building_heatmap import build_building_heatmap
+from src.north_elevation_heatmap import build_north_elevation
 
 NAVY="#0B2E52"
 LEVELS=["B2","B1"]+[f"L{i}" for i in range(1,10)]
@@ -174,11 +174,11 @@ def render_variance(model):
         if details.empty:
             st.info(f"No comparable {metric.lower()} dates.")
             continue
-        figure=go.Figure(build_building_heatmap(
+        figure=go.Figure(build_north_elevation(
             details,level_col="Level",type_col="Activity Type",
             value_col="Variance",
             title=f"{metric.upper()} VARIANCE · {previous} → {current}",
-            type_order=categories,unit="calendar days",height=880))
+            type_order=categories,unit="calendar days",height=1000))
         st.plotly_chart(figure,use_container_width=True,config={"displayModeBar":False})
     title("HISTORICAL START & FINISH VARIANCE BY LEVEL · VS U38")
     history=[k for k in ["U45","U46","U47","U48","U49","U50"] if k in available]
