@@ -39,7 +39,10 @@ def history_selection(model,prefix,default=None):
 def title(text):
     st.markdown(f'<div style="background:#0B2E52;color:white;padding:12px 16px;font-weight:800;font-size:17px">{text}</div>',unsafe_allow_html=True)
 
-def _milestone_calendar(root,key,code):
+from functools import lru_cache
+
+@lru_cache(maxsize=12)
+def _calendar_catalog(root,key):
     """Read the activity calendar and exceptions from its P6 XER snapshot."""
     import re
     from datetime import timedelta
@@ -48,7 +51,7 @@ def _milestone_calendar(root,key,code):
         return None
     table=None
     columns=[]
-    task_calendar=None
+    task_calendars={}
     calendars={}
     with path.open(encoding="cp1252",errors="ignore") as stream:
         for line in stream:
@@ -59,13 +62,16 @@ def _milestone_calendar(root,key,code):
                 columns=parts[1:]
             elif parts[0]=="%R" and table in ("TASK","CALENDAR"):
                 row=dict(zip(columns,parts[1:]))
-                if table=="TASK" and row.get("task_code")==code:
-                    task_calendar=row.get("clndr_id")
+                if table=="TASK":
+                    task_calendars[row.get("task_code")]=row.get("clndr_id")
                 if table=="CALENDAR":
                     calendars[row.get("clndr_id")]=row
-    if not task_calendar or task_calendar not in calendars:
-        return None
-    c=calendars[task_calendar]
+    parsed={}
+    for cal_id,c in calendars.items():
+        parsed[cal_id]=_parse_calendar_data(c)
+    return task_calendars,parsed
+
+def _parse_calendar_data(c):
     raw=c.get("clndr_data","")
     days_section=raw.split("DaysOfWeek()",1)[-1].split("Exceptions()",1)[0]
     workdays=set()
@@ -85,6 +91,13 @@ def _milestone_calendar(root,key,code):
         date=(base+pd.Timedelta(days=int(match.group(1)))).date()
         overrides[date]="s|" in segment
     return workdays,overrides
+
+def _milestone_calendar(root,key,code):
+    catalog=_calendar_catalog(root,key)
+    if catalog is None:
+        return None
+    task_calendars,calendars=catalog
+    return calendars.get(task_calendars.get(code))
 
 def _workday_shift(baseline,current,calendar):
     if pd.isna(baseline) or pd.isna(current) or calendar is None:
@@ -149,12 +162,13 @@ def render_milestones(model):
         record={"Level":activity["Level"],"Activity ID":code,"Activity Name":activity["task_name"]}
         for key in updates:
             record[key]=date_text(finish_by_code(model,key,code))
-        record["Variance (calendar days)"]=int((baseline.normalize()-current_date.normalize()).days) if pd.notna(baseline) and pd.notna(current_date) else None
+        calendar=_milestone_calendar(Path("/tmp/helix_nih_data"),model.current_key,code)
+        record["Variance (working days)"]=_workday_shift(baseline,current_date,calendar)
         record["Status"]=activity.get("Status","")
         rows.append(record)
     energization=pd.DataFrame(rows)
     latest_four=sorted([key for key in model.available_updates if key!="U38"],key=lambda x:int(x[1:]))[-4:]
-    display_columns=["Level","Activity ID","Activity Name","U38"]+latest_four+["Variance (calendar days)","Status"]
+    display_columns=["Level","Activity ID","Activity Name","U38"]+latest_four+["Variance (working days)","Status"]
     for col in display_columns:
         if col not in energization:
             energization[col]="—"
@@ -168,7 +182,7 @@ def render_milestones(model):
         return ("color:#BC2929;font-weight:700" if value<0 else
                 "color:#157E43;font-weight:700" if value>0 else "color:#64748B")
     styled=(energization.style.map(status_color,subset=["Status"])
-            .map(variance_color,subset=["Variance (calendar days)"]))
+            .map(variance_color,subset=["Variance (working days)"]))
     st.dataframe(styled,use_container_width=True,hide_index=True,height=550,
         column_config={"Activity Name":st.column_config.TextColumn(width="large"),
                        "Activity ID":st.column_config.TextColumn(width="medium")})
