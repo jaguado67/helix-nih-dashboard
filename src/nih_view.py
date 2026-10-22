@@ -133,14 +133,8 @@ def render_dashboard(m):
     selected=st.multiselect("Compare updates against the fixed U38 baseline",available,
                             default=default,format_func=lambda k: f"{update_label(m,k)}",
                             key="nih_historical_selection")
-    scope_mode=st.radio("Comparison Method",["Original Schedule","Same Activities Across Updates"],
-                        horizontal=True,key="nih_scope_mode")
-    common=scope_mode=="Same Activities Across Updates"
     if selected:
         cohort=None
-        if common:
-            cohort=set.intersection(*(set(m.raw_schedules[k]["task_code"].astype(str)) for k in ["U38"]+selected)) & set(m.native_scopes["U38"]["task_code"].astype(str))
-            st.caption(f"{len(cohort):,} Activities in Common")
         hist_fig=go.Figure()
         baseline=m.schedules["U38"].copy()  # HELIX-only via verified current HELIX code set
         if cohort is not None:
@@ -165,17 +159,38 @@ def render_dashboard(m):
                 forecast=pd.concat([pd.DataFrame({"Date":[cutoff],"Forecast":[completed]}),forecast.loc[forecast["Date"]>cutoff]],ignore_index=True)
             if key=="U39" and cohort is None and pd.notna(cutoff) and not forecast.empty:
                 forecast.loc[forecast["Date"].eq(cutoff),"Forecast"]=348
+            color=palette[i%len(palette)]
+            # Dashed = observed historical progress; solid = remaining forecast.
+            actual_rows=m.schedules[key]
+            if key=="U39" and m.native_scopes[key].empty:
+                ids=set(m.schedules["U38"]["task_code"].astype(str))
+                actual_rows=m.raw_schedules[key][m.raw_schedules[key]["task_code"].astype(str).isin(ids)]
+            actual_dates=pd.to_datetime(actual_rows["act_end_date"],errors="coerce")
+            actual_dates=actual_dates.where(actual_rows["Status"].eq("Completed"))
+            if pd.notna(cutoff) and not actual_dates.dropna().empty:
+                history_months=pd.date_range(
+                    min(base["Date"].min(),actual_dates.min().to_period("M").to_timestamp()),
+                    cutoff.to_period("M").to_timestamp(),freq="MS")
+                past=pd.DataFrame({"Date":list(history_months)+[cutoff]})
+                past["Count"]=[int(actual_dates.le(d+pd.offsets.MonthEnd(0)).sum())
+                               for d in history_months]+[int(actual_dates.le(cutoff).sum())]
+                if key=="U39":
+                    past["Count"]=past["Count"].clip(upper=348)
+                    past.loc[past.index[-1],"Count"]=348
+                hist_fig.add_trace(go.Scatter(x=past["Date"],y=past["Count"],
+                    name=update_label(m,key)+" · actual",mode="lines",
+                    line=dict(width=1.8,color=color,dash="dash"),
+                    showlegend=False,hovertemplate="%{x|%b-%Y}: %{y} actual<extra></extra>"))
             hist_fig.add_trace(go.Scatter(x=forecast["Date"],y=forecast["Forecast"],
                                           name=update_label(m,key),mode="lines",
-                                          line=dict(width=2.5,color=palette[i%len(palette)])))
+                                          line=dict(width=2.5,color=color)))
         hist_fig.update_layout(height=430,plot_bgcolor="white",hovermode="x unified",
                                margin=dict(l=15,r=15,t=40,b=15),yaxis_title="Cumulative Activities",
                                legend=dict(orientation="h",y=1.16,x=0))
         hist_fig.update_yaxes(gridcolor=GRID,rangemode="tozero")
         hist_fig.update_xaxes(tickformat="%b-%y",dtick="M2",range=[base["Date"].min(),pd.Timestamp("2027-05-31")])
         st.plotly_chart(hist_fig,use_container_width=True,config={"displayModeBar":False})
-        st.caption("Each colored curve retains that update's own forecast as of its Data Date. "
-                   "The U38 baseline is fixed. Historical forecasts are not a measure of actual progress.")
+        st.caption("Dashed lines: reported actual progress up to each Data Date. Solid lines: forecast after the Data Date. U38: baseline.")
         st.dataframe(m.historical_diagnostics(selected,activity_ids=cohort).sort_values("Data Date",ascending=False,kind="stable"),use_container_width=True,hide_index=True)
 
     else:
@@ -214,7 +229,46 @@ def render_dashboard(m):
     fig2.update_yaxes(gridcolor=GRID,rangemode="tozero")
     fig2.update_xaxes(showgrid=False,categoryorder="array",
                       categoryarray=["Completed","In Progress","Not Started"])
-    st.plotly_chart(fig2,use_container_width=True,config={"displayModeBar":False})
+    status_col,monthly_col=st.columns(2,gap="large")
+    with status_col:
+        st.markdown("**ACTIVITY STATUS · PREVIOUS VS CURRENT**")
+        fig2.update_layout(height=370,legend=dict(orientation="h",y=-0.24,x=0))
+        st.plotly_chart(fig2,use_container_width=True,config={"displayModeBar":False})
+    with monthly_col:
+        st.markdown("**MONTHLY PROGRESS · PLANNED VS COMPLETED**")
+        monthly=[]
+        available_hist=sorted([k for k in m.available_updates if k!="U38"],key=lambda k:int(k[1:]))
+        for newer in [previous,current]:
+            older_candidates=[k for k in available_hist if int(k[1:])<int(newer[1:])]
+            if not older_candidates:
+                continue
+            older=older_candidates[-1]
+            beginning=pd.to_datetime(m.projects[older].get("last_recalc_date"),errors="coerce")
+            ending=pd.to_datetime(m.projects[newer].get("last_recalc_date"),errors="coerce")
+            if pd.isna(beginning) or pd.isna(ending):
+                continue
+            old_df=m.schedules[older]
+            new_df=m.schedules[newer]
+            from src.nih_model import forecast_finish
+            due=forecast_finish(old_df)
+            old_done=old_df["Status"].eq("Completed")
+            planned=int((~old_done & due.gt(beginning) & due.le(ending)).sum())
+            old_ids=set(old_df.loc[old_done,"task_code"].astype(str))
+            newly_done=new_df.loc[new_df["Status"].eq("Completed"),"task_code"].astype(str)
+            completed=int((~newly_done.isin(old_ids)).sum())
+            monthly.append({"Period":beginning.strftime("%b %Y")+" → "+ending.strftime("%b %Y"),
+                            "Planned":planned,"Completed":completed})
+        if monthly:
+            progress=pd.DataFrame(monthly)
+            bars=go.Figure()
+            for field,color in [("Planned",BLUE),("Completed",ORANGE)]:
+                bars.add_trace(go.Bar(x=progress["Period"],y=progress[field],name=field,
+                    marker_color=color,text=progress[field],textposition="outside",cliponaxis=False))
+            bars.update_layout(barmode="group",height=370,plot_bgcolor="white",
+                margin=dict(l=25,r=15,t=30,b=55),yaxis_title="HELIX Activities",
+                legend=dict(orientation="h",y=-0.28,x=0))
+            bars.update_yaxes(gridcolor=GRID,rangemode="tozero")
+            st.plotly_chart(bars,use_container_width=True,config={"displayModeBar":False})
 
     with st.expander("Diagnostics · NIH HELIX Scope Audit",expanded=False):
         st.dataframe(pd.DataFrame([m.scope_diagnostics()]),use_container_width=True,hide_index=True)
