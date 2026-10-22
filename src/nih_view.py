@@ -167,7 +167,7 @@ def render_dashboard(m):
                 actual_rows=m.raw_schedules[key][m.raw_schedules[key]["task_code"].astype(str).isin(ids)]
             actual_dates=pd.to_datetime(actual_rows["act_end_date"],errors="coerce")
             actual_dates=actual_dates.where(actual_rows["Status"].eq("Completed"))
-            if key!="U39" and pd.notna(cutoff) and not actual_dates.dropna().empty:
+            if pd.notna(cutoff) and not actual_dates.dropna().empty:
                 history_months=pd.date_range(
                     min(base["Date"].min(),actual_dates.min().to_period("M").to_timestamp()),
                     cutoff.to_period("M").to_timestamp(),freq="MS")
