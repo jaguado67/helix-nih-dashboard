@@ -43,21 +43,22 @@ div[data-testid="stSegmentedControl"] button {font-weight:700}
 [data-testid="stHeader"] {background: #ffffff;}
 [data-testid="stMainBlockContainer"] {padding-top: 1.35rem !important;}
 
-.nih-header-row {display:grid;grid-template-columns:minmax(130px,1fr) minmax(0,7fr) minmax(130px,1fr);gap:12px;align-items:stretch;margin:0 0 14px}
-.nih-logo-card {min-height:112px;height:auto;border:1px solid #cfdae7;border-radius:7px;background:#fff;display:flex;align-items:center;justify-content:center;padding:10px;box-sizing:border-box}
-.nih-logo-card img {display:block;width:100%;max-height:110px;object-fit:contain}
-.nih-header-main {min-width:0;min-height:112px;height:auto;border-radius:6px;background:#0B2E52;display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"copy tags" "meta meta";align-content:center;align-items:center;column-gap:16px;row-gap:10px;padding:15px 20px;color:white;box-sizing:border-box;overflow:visible}
-.nih-header-copy {grid-area:copy;min-width:0}
-.nih-header-title {font-size:clamp(17px,1.6vw,22px);font-weight:800;line-height:1.3;overflow-wrap:break-word}
-.nih-header-sub {font-size:12px;margin-top:5px;line-height:1.4}
-.nih-header-tags {grid-area:tags;display:flex;flex-wrap:wrap;gap:7px;justify-content:flex-end}
-.nih-header-tags span {padding:8px;border:1px solid #819ab6;border-radius:5px;font-size:10px;font-weight:800;white-space:nowrap}
-.nih-header-date {grid-area:meta;display:flex;flex-wrap:wrap;gap:5px 18px;justify-content:flex-end;font-size:11px;line-height:1.45;text-align:right;white-space:normal}
-.nih-header-date > div {min-width:0}
+.nih-header-row {display:grid;grid-template-columns:175px minmax(0,1fr) 175px;gap:12px;align-items:stretch;margin:12px 0 18px}
+.nih-logo-card {min-height:124px;border:1px solid #cfdae7;border-radius:7px;background:#fff;display:flex;align-items:center;justify-content:center;padding:10px;box-sizing:border-box}
+.nih-logo-card img {display:block;max-width:100%;max-height:100px;object-fit:contain}
+.nih-header-main {min-width:0;min-height:124px;border-radius:6px;background:#0B2E52;display:flex;align-items:center;justify-content:space-between;gap:20px;padding:22px 24px;color:#fff;box-sizing:border-box;overflow:visible}
+.nih-header-copy {min-width:0;flex:1 1 auto}
+.nih-header-title {font-size:21px;font-weight:800;line-height:1.35;overflow-wrap:normal}
+.nih-header-sub {font-size:12px;margin-top:9px;line-height:1.5}
+.nih-header-right {flex:0 0 auto;display:flex;flex-direction:column;align-items:flex-end;justify-content:center;gap:13px}
+.nih-header-tags {display:flex;gap:8px;justify-content:flex-end}
+.nih-header-tags span {padding:9px 10px;border:1px solid #819ab6;border-radius:5px;font-size:10px;font-weight:800;white-space:nowrap}
+.nih-header-date {display:flex;flex-direction:column;gap:2px;font-size:11px;line-height:1.45;text-align:right;white-space:nowrap}
 .nih-tabs-wrap {height:0}
 div[data-testid="stSegmentedControl"] {background:#fff!important;border:1px solid #cfd9e6;border-radius:8px;padding:14px!important;display:flex;justify-content:center;margin-bottom:15px}
-@media(max-width:1100px){.nih-header-row{grid-template-columns:115px minmax(0,1fr) 115px}.nih-header-title{font-size:18px}.nih-header-main{padding:12px 14px}.nih-header-date{justify-content:flex-start;text-align:left}}
-@media(max-width:720px){.nih-header-row{grid-template-columns:1fr 1fr}.nih-header-main{grid-column:1/-1;grid-row:1;grid-template-columns:minmax(0,1fr);grid-template-areas:"copy" "tags" "meta"}.nih-header-tags,.nih-header-date{justify-content:flex-start;text-align:left}.nih-logo-card{min-height:74px}.nih-logo-card img{max-height:70px}}
+@media(max-width:1200px){.nih-header-row{grid-template-columns:140px minmax(0,1fr) 140px}.nih-header-main{padding:18px 18px}.nih-header-title{font-size:19px}.nih-header-right{gap:8px}.nih-header-date{font-size:10px}}
+@media(max-width:850px){.nih-header-main{flex-wrap:wrap;gap:12px}.nih-header-right{width:100%;flex-direction:row;justify-content:space-between;align-items:center;flex-wrap:wrap}.nih-header-date{text-align:right}}
+@media(max-width:640px){.nih-header-row{grid-template-columns:1fr 1fr}.nih-header-main{grid-column:1/-1;grid-row:1}.nih-header-right{flex-direction:column;align-items:flex-start}.nih-header-date{text-align:left}.nih-logo-card{min-height:75px}.nih-logo-card img{max-height:70px}}
 </style>
 """,unsafe_allow_html=True)
 logo_dir=Path(__file__).resolve().parent/"LOGOS"
@@ -88,8 +89,10 @@ st.markdown(f"""
    <div class="nih-header-title">HELIX Project &amp; Portfolio Control Center</div>
    <div class="nih-header-sub">NIH Schedule Performance Dashboard</div>
   </div>
-  <div class="nih-header-tags"><span>NIH PROJECT DETAIL</span><span>v0.6</span></div>
-  <div class="nih-header-date"><b>Latest Data Date</b> {html.escape(stamp)}<div><b>Current Update</b> {html.escape(model.current_key)}</div><div>Baseline U38 · Previous {html.escape(model.previous_key)}</div></div>
+  <div class="nih-header-right">
+   <div class="nih-header-tags"><span>NIH PROJECT DETAIL</span><span>v0.6</span></div>
+   <div class="nih-header-date"><div><b>Latest Data Date</b> {html.escape(stamp)}</div><div><b>Current Update</b> {html.escape(model.current_key)}</div><div>Baseline U38 · Previous {html.escape(model.previous_key)}</div></div>
+  </div>
  </div>
  {logo_card(logo_right)}
 </div>
