@@ -43,19 +43,21 @@ div[data-testid="stSegmentedControl"] button {font-weight:700}
 [data-testid="stHeader"] {background: #ffffff;}
 [data-testid="stMainBlockContainer"] {padding-top: 1.35rem !important;}
 
-.nih-header-row {display:grid;grid-template-columns:minmax(145px, 1fr) minmax(0, 5.8fr) minmax(145px, 1fr);gap:12px;align-items:stretch;margin:0 0 14px}
-.nih-logo-card {height:108px;border:1px solid #cfdae7;border-radius:7px;background:#fff;display:flex;align-items:center;justify-content:center;padding:9px;box-sizing:border-box}
-.nih-logo-card img {display:block;width:100%;height:100%;object-fit:contain}
-.nih-header-main {min-height:108px;border-radius:6px;background:#0B2E52;display:flex;align-items:center;justify-content:space-between;gap:14px;padding:18px 22px;color:white;box-sizing:border-box}
-.nih-header-title {font-size:22px;font-weight:800;line-height:1.25}
-.nih-header-sub {font-size:12px;margin-top:9px}
-.nih-header-tags {display:flex;gap:7px;white-space:nowrap}
-.nih-header-tags span {padding:10px 9px;border:1px solid #819ab6;border-radius:5px;font-size:10px;font-weight:800}
-.nih-header-date {font-size:10px;line-height:1.75;text-align:right;white-space:nowrap}
+.nih-header-row {display:grid;grid-template-columns:minmax(130px,1fr) minmax(0,7fr) minmax(130px,1fr);gap:12px;align-items:stretch;margin:0 0 14px}
+.nih-logo-card {min-height:112px;height:auto;border:1px solid #cfdae7;border-radius:7px;background:#fff;display:flex;align-items:center;justify-content:center;padding:10px;box-sizing:border-box}
+.nih-logo-card img {display:block;width:100%;max-height:110px;object-fit:contain}
+.nih-header-main {min-width:0;min-height:112px;height:auto;border-radius:6px;background:#0B2E52;display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"copy tags" "meta meta";align-content:center;align-items:center;column-gap:16px;row-gap:10px;padding:15px 20px;color:white;box-sizing:border-box;overflow:visible}
+.nih-header-copy {grid-area:copy;min-width:0}
+.nih-header-title {font-size:clamp(17px,1.6vw,22px);font-weight:800;line-height:1.3;overflow-wrap:break-word}
+.nih-header-sub {font-size:12px;margin-top:5px;line-height:1.4}
+.nih-header-tags {grid-area:tags;display:flex;flex-wrap:wrap;gap:7px;justify-content:flex-end}
+.nih-header-tags span {padding:8px;border:1px solid #819ab6;border-radius:5px;font-size:10px;font-weight:800;white-space:nowrap}
+.nih-header-date {grid-area:meta;display:flex;flex-wrap:wrap;gap:5px 18px;justify-content:flex-end;font-size:11px;line-height:1.45;text-align:right;white-space:normal}
+.nih-header-date > div {min-width:0}
 .nih-tabs-wrap {height:0}
 div[data-testid="stSegmentedControl"] {background:#fff!important;border:1px solid #cfd9e6;border-radius:8px;padding:14px!important;display:flex;justify-content:center;margin-bottom:15px}
-@media(max-width:1100px){.nih-header-main{flex-wrap:wrap}.nih-header-title{font-size:18px}.nih-header-tags{order:3}.nih-header-row{grid-template-columns:125px minmax(0,1fr) 125px}}
-@media(max-width:720px){.nih-header-row{grid-template-columns:1fr 1fr}.nih-header-main{grid-column:1/-1;grid-row:1}.nih-logo-card{height:75px}.nih-header-date{text-align:left}}
+@media(max-width:1100px){.nih-header-row{grid-template-columns:115px minmax(0,1fr) 115px}.nih-header-title{font-size:18px}.nih-header-main{padding:12px 14px}.nih-header-date{justify-content:flex-start;text-align:left}}
+@media(max-width:720px){.nih-header-row{grid-template-columns:1fr 1fr}.nih-header-main{grid-column:1/-1;grid-row:1;grid-template-columns:minmax(0,1fr);grid-template-areas:"copy" "tags" "meta"}.nih-header-tags,.nih-header-date{justify-content:flex-start;text-align:left}.nih-logo-card{min-height:74px}.nih-logo-card img{max-height:70px}}
 </style>
 """,unsafe_allow_html=True)
 logo_dir=Path(__file__).resolve().parent/"LOGOS"
