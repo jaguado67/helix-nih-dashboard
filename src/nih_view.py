@@ -21,7 +21,7 @@ def update_label(m,key):
 def render_dashboard(m):
     st.markdown("""
     <style>
-    .block-container{max-width:1550px;padding-top:.55rem;padding-bottom:2rem}
+    .block-container{max-width:1550px;padding-bottom:2rem}
     header[data-testid="stHeader"]{background:transparent}.stApp{background:#fff;color:#10233D}
     .hdr{background:#0B2E52;color:#fff;padding:12px 16px;display:grid;grid-template-columns:1.5fr .9fr .85fr;align-items:center;gap:12px}
     .brand{font-size:21px;font-weight:900;line-height:1.05}.sub{font-size:11px;margin-top:5px}.badges{text-align:center}.badge{display:inline-block;border:1px solid rgba(255,255,255,.55);padding:8px 11px;margin:2px;border-radius:4px;font-size:10px;font-weight:800}.right{text-align:right;font-size:10px;line-height:1.45}
