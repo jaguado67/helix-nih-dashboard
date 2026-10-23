@@ -37,11 +37,11 @@ if model.current_key == "U49":
 st.markdown("""
 <style>
 [data-testid="stSidebar"] {display:none}
-.block-container {max-width:1550px;padding-top:1.35rem}
+.block-container {max-width:1550px;padding-top:2rem !important;padding-bottom:2rem}
 div[data-testid="stSegmentedControl"] {background:#0B2E52;padding:8px;border-radius:0 0 6px 6px}
 div[data-testid="stSegmentedControl"] button {font-weight:700}
 [data-testid="stHeader"] {background: #ffffff;}
-[data-testid="stMainBlockContainer"] {padding-top: 1.35rem !important;}
+[data-testid="stMainBlockContainer"] {padding-top:2rem !important;}
 
 .nih-header-row {display:grid;grid-template-columns:175px minmax(0,1fr) 175px;gap:12px;align-items:stretch;margin:12px 0 18px}
 .nih-logo-card {min-height:124px;border:1px solid #cfdae7;border-radius:7px;background:#fff;display:flex;align-items:center;justify-content:center;padding:10px;box-sizing:border-box}
@@ -54,7 +54,6 @@ div[data-testid="stSegmentedControl"] button {font-weight:700}
 .nih-header-tags {display:flex;gap:8px;justify-content:flex-end}
 .nih-header-tags span {padding:9px 10px;border:1px solid #819ab6;border-radius:5px;font-size:10px;font-weight:800;white-space:nowrap}
 .nih-header-date {display:flex;flex-direction:column;gap:2px;font-size:11px;line-height:1.45;text-align:right;white-space:nowrap}
-.nih-tabs-wrap {height:0}
 div[data-testid="stSegmentedControl"] {background:#fff!important;border:1px solid #cfd9e6;border-radius:8px;padding:14px!important;display:flex;justify-content:center;margin-bottom:15px}
 @media(max-width:1200px){.nih-header-row{grid-template-columns:140px minmax(0,1fr) 140px}.nih-header-main{padding:18px 18px}.nih-header-title{font-size:19px}.nih-header-right{gap:8px}.nih-header-date{font-size:10px}}
 @media(max-width:850px){.nih-header-main{flex-wrap:wrap;gap:12px}.nih-header-right{width:100%;flex-direction:row;justify-content:space-between;align-items:center;flex-wrap:wrap}.nih-header-date{text-align:right}}
@@ -97,9 +96,7 @@ st.markdown(f"""
  {logo_card(logo_right)}
 </div>
 """,unsafe_allow_html=True)
-st.markdown('<div class="nih-tabs-wrap">',unsafe_allow_html=True)
 page=st.segmented_control("NIH Dashboard",["Project Overview","Milestones & Energization","Schedule Variance Analysis"],default="Project Overview",key="nih_page",label_visibility="collapsed") or "Project Overview"
-st.markdown('</div>',unsafe_allow_html=True)
 if page=="Project Overview":
     render_dashboard(model)
 elif page=="Milestones & Energization":
