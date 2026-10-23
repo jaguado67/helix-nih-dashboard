@@ -237,9 +237,12 @@ def variance_details(model,previous_key,current_key,field):
 def render_variance(model):
     title("SCHEDULE VARIANCE ANALYSIS")
     available=[k for k in model.available_updates if k!="U38"]
+    # Allow the original U38 baseline as the reference for any later update.
+    previous_options=["U38"]+available
     c1,c2=st.columns(2)
     with c1:
-        previous=st.selectbox("Previous Update",available,index=available.index(model.previous_key))
+        previous=st.selectbox("Previous Update",previous_options,
+                              index=previous_options.index(model.previous_key))
     with c2:
         current=st.selectbox("Current Update",available,index=available.index(model.current_key))
     if int(previous[1:])>=int(current[1:]):
